@@ -30,13 +30,15 @@ Ubuntu additionally needs the Qt runtime libraries, which a desktop install alre
 
 On the development machine:
 
-1. Bump `version` in `pyproject.toml`, then `uv lock`.
-2. Commit, then tag and push the commit — **not the tag yet**:
+1. Bump `version` in `pyproject.toml` (skip for the very first release, 0.1.0), then `uv lock`.
+2. Commit, tag and push both:
    ```bash
    git commit -am "Release 0.2.0"
    git tag v0.2.0
-   git push origin main
+   git push origin main v0.2.0
    ```
+   The tag pipeline's `release` job fails at this point because the builds are not uploaded yet. That
+   is expected; it is retried in step 4.
 
 On each OS (Linux, macOS, Windows), in the clone:
 
@@ -53,10 +55,10 @@ On each OS (Linux, macOS, Windows), in the clone:
 
    Without `--upload` it is a local test build; that is also the way to check a change to packaging.
 
-Back on any machine, once all three are uploaded:
+Once all three are uploaded:
 
-4. Push the tag: `git push origin v0.2.0`. The `release` job checks that every archive is in the
-   registry and creates the GitLab release with links to them.
+4. In GitLab, open the tag's pipeline (Build → Pipelines) and retry the `release` job. It checks that
+   every archive is in the registry and creates the release with links to them.
 
 A failed build on one OS can be rebuilt and re-uploaded with the same command; uploading the same file
 name again adds a newer file to the package, and downloads always serve the newest.
