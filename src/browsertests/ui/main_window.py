@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import sqlite3
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSettings, Qt
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QDialog,
     QFrame,
@@ -25,6 +26,7 @@ from browsertests.ui.settings_dialog import SettingsDialog
 from browsertests.ui.widgets import IconButton
 
 WINDOW_TITLE = "ComfyCoders BrowsertestSuite {version}"
+GEOMETRY_KEY = "ui/main_window_geometry"
 
 
 class MainWindow(QMainWindow):
@@ -53,6 +55,17 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.project_view, 1)
         self.setCentralWidget(root)
         self._load_projects()
+
+    def show_restored(self) -> None:
+        geometry = QSettings().value(GEOMETRY_KEY)
+        if geometry is not None and self.restoreGeometry(geometry) and not self.isMaximized():
+            self.show()
+            return
+        self.showMaximized()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        QSettings().setValue(GEOMETRY_KEY, self.saveGeometry())
+        super().closeEvent(event)
 
     def _sidebar(self) -> QWidget:
         sidebar = QFrame()
