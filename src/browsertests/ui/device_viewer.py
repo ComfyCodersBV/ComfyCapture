@@ -19,7 +19,7 @@ from PySide6.QtGui import (
     QResizeEvent,
     QWheelEvent,
 )
-from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLineEdit, QVBoxLayout, QWidget
 
 from browsertests.ui.widgets import IconButton
 
@@ -47,7 +47,9 @@ MOUSE_BUTTONS = {
 }
 MOVE_INTERVAL = 1 / 30
 INVERT_SCROLL_KEY = "viewer/invert_scroll"
-MAX_SCALE = 1.5
+ZOOM_KEY = "viewer/zoom"
+ZOOM_FIT = 0.0
+ZOOM_LEVELS = (ZOOM_FIT, 0.5, 0.75, 1.0)
 MARGIN = 28
 
 
@@ -79,6 +81,7 @@ class DeviceViewer(QWidget):
         self._last_move = 0.0
         self._requested_size: tuple[int, int] | None = None
         self.invert_scroll = QSettings().value(INVERT_SCROLL_KEY, False, bool)
+        self.zoom = float(QSettings().value(ZOOM_KEY, 1.0, float))
         self._size_timer = QTimer(self)
         self._size_timer.setSingleShot(True)
         self._size_timer.setInterval(200)
@@ -122,7 +125,8 @@ class DeviceViewer(QWidget):
         ratio = self.devicePixelRatioF()
         available_width = self.width() - 2 * (MARGIN + bezel)
         available_height = self.height() - 2 * (MARGIN + bezel)
-        scale = min(available_width / self._css_width, available_height / self._css_height, MAX_SCALE)
+        fit = min(available_width / self._css_width, available_height / self._css_height)
+        scale = fit if self.zoom == ZOOM_FIT else min(self.zoom, fit)
         scale = max(scale, 0.1)
         width = round(self._css_width * scale * ratio) / ratio
         height = round(self._css_height * scale * ratio) / ratio
@@ -226,6 +230,12 @@ class DeviceViewer(QWidget):
             }
         )
 
+    def set_zoom(self, zoom: float) -> None:
+        self.zoom = zoom
+        QSettings().setValue(ZOOM_KEY, zoom)
+        self._size_timer.start()
+        self.update()
+
     def set_invert_scroll(self, inverted: bool) -> None:
         self.invert_scroll = inverted
         QSettings().setValue(INVERT_SCROLL_KEY, inverted)
@@ -282,6 +292,13 @@ class ViewerBar(QWidget):
             self.tr("Scroll like on a touch screen: the page follows the direction of your fingers.")
         )
         layout.addWidget(self.invert_scroll)
+        self.zoom = QComboBox()
+        for level in ZOOM_LEVELS:
+            self.zoom.addItem(self.tr("Fit") if level == ZOOM_FIT else f"{round(level * 100)}%", level)
+        self.zoom.setToolTip(
+            self.tr("Zoom. 100% shows the page at its real size, like the browser's device mode.")
+        )
+        layout.addWidget(self.zoom)
 
     def set_location(self, url: str) -> None:
         if not self.address.hasFocus():
@@ -305,6 +322,10 @@ class DevicePanel(QWidget):
         self.viewer = DeviceViewer()
         self.bar.invert_scroll.setChecked(self.viewer.invert_scroll)
         self.bar.invert_scroll.toggled.connect(self.viewer.set_invert_scroll)
+        self.bar.zoom.setCurrentIndex(max(0, self.bar.zoom.findData(self.viewer.zoom)))
+        self.bar.zoom.currentIndexChanged.connect(
+            lambda index: self.viewer.set_zoom(float(self.bar.zoom.itemData(index)))
+        )
         self.bar.command.connect(self.command.emit)
         self.viewer.command.connect(self.command.emit)
         layout = QVBoxLayout(self)

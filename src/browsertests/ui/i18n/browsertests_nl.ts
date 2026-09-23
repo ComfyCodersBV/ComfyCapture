@@ -1307,34 +1307,44 @@
 <context>
     <name>ViewerBar</name>
     <message>
-        <location filename="../device_viewer.py" line="260"/>
+        <location filename="../device_viewer.py" line="278"/>
         <source>Back</source>
         <translation>Terug</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="261"/>
+        <location filename="../device_viewer.py" line="279"/>
         <source>Forward</source>
         <translation>Vooruit</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="262"/>
+        <location filename="../device_viewer.py" line="280"/>
         <source>Reload</source>
         <translation>Vernieuwen</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="268"/>
+        <location filename="../device_viewer.py" line="286"/>
         <source>Type a URL or a path and press Enter</source>
         <translation>Typ een URL of pad en druk op Enter</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="271"/>
+        <location filename="../device_viewer.py" line="289"/>
         <source>Invert scrolling</source>
         <translation>Scrollrichting omdraaien</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="274"/>
+        <location filename="../device_viewer.py" line="292"/>
         <source>Scroll like on a touch screen: the page follows the direction of your fingers.</source>
         <translation>Scrollen zoals op een touchscreen: de pagina volgt de richting van je vingers.</translation>
+    </message>
+    <message>
+        <location filename="../device_viewer.py" line="297"/>
+        <source>Fit</source>
+        <translation>Passend</translation>
+    </message>
+    <message>
+        <location filename="../device_viewer.py" line="299"/>
+        <source>Zoom. 100% shows the page at its real size, like the browser&apos;s device mode.</source>
+        <translation>Zoom. 100% toont de pagina op ware grootte, zoals de device-modus van de browser.</translation>
     </message>
 </context>
 </TS>
