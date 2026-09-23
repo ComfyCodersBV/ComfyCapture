@@ -33,6 +33,12 @@ the pages in `tests/fixtures/site/`.
    drops ids that change between page loads.
 5. Continue recording replays the saved steps in a visible browser, then keeps recording.
 
+## Translations
+
+UI strings are English in the code and translated to Dutch in `src/browsertests/ui/i18n/`. After changing
+UI text: `uv run python packaging/update_translations.py`, translate the unfinished strings in Qt Linguist
+(`uv run pyside6-linguist src/browsertests/ui/i18n/browsertests_nl.ts`), and run the script again.
+
 ## Packaging
 
 Desktop builds are made by hand on each OS with one command; see `packaging/RELEASING.md`.

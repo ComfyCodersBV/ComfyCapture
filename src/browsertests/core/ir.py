@@ -176,7 +176,10 @@ def validate_step(step: Step) -> None:
 def device_to_dict(device: Device) -> Document:
     if device.is_mobile:
         return {"kind": device.kind.value, "name": device.name}
-    return {"kind": device.kind.value, "width": device.width, "height": device.height}
+    document: Document = {"kind": device.kind.value, "width": device.width, "height": device.height}
+    if device.fullscreen:
+        document["fullscreen"] = True
+    return document
 
 
 def device_from_dict(document: Document | None) -> Device:
@@ -188,7 +191,12 @@ def device_from_dict(document: Document | None) -> Device:
         if not name:
             raise InvalidDocumentError("A mobile device needs a Playwright device name.")
         return Device(kind=kind, name=name)
-    return Device(kind=kind, width=int(document.get("width", 1440)), height=int(document.get("height", 900)))
+    return Device(
+        kind=kind,
+        width=int(document.get("width", 1440)),
+        height=int(document.get("height", 900)),
+        fullscreen=bool(document.get("fullscreen", False)),
+    )
 
 
 def to_document(test: Test) -> Document:

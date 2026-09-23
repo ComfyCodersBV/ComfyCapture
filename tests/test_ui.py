@@ -83,3 +83,17 @@ def test_record_setup_offers_desktop_and_mobile(application, seeded) -> None:
 
     assert "desktop 1440x900" in labels
     assert "iPhone 15" in labels
+
+
+def test_dutch_translation_is_bundled_and_loads(application, monkeypatch) -> None:
+    from browsertests.ui import translations
+
+    monkeypatch.setattr(translations, "preferred_language", lambda: "nl")
+
+    translator = translations.install_translator(application)
+
+    try:
+        assert translator is not None
+        assert translator.translate("MainWindow", "Settings") == "Instellingen"
+    finally:
+        application.removeTranslator(translator)

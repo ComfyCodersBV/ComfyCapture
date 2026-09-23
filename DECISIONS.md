@@ -41,11 +41,23 @@ A test carries a `device` in the IR: `{"kind": "desktop", "width": 1440, "height
 same emulation. On mobile, clicks are recorded as `tap` and replayed with touch enabled. One test = one
 profile; mobile flows usually differ (hamburger menus), so a test is not replayed on both.
 
+The default is desktop full screen (`"fullscreen": true`): the recording window starts maximised and the
+page follows it; the size measured at the end of the recording is stored and used for replay.
+
+A fixed size or a mobile device is recorded in the app itself: the browser runs headless with the
+device emulation, `core/screencast.py` streams the page over the DevTools protocol, and the desktop
+shows it centred in a device frame (`ui/device_viewer.py`), forwarding mouse, touch and keyboard input.
+A headed Chromium window cannot be narrower than about 500 pixels and always draws the emulated
+viewport in its top-left corner, which made phone recordings look broken. Known gaps of the viewer:
+native `<select>` popups, file choosers and `alert`/`confirm` dialogs are not shown yet.
+
 ## D4 — Several test attributes per project
 
 With the own recorder there is no single-flag limit, so `projects.test_id_attributes` is an ordered JSON
-list (e.g. `["data-testid", "dusk", "data-test"]`). A `test_id` selector stores its attribute, and is
-replayed as a CSS attribute selector, so `set_test_id_attribute` is not needed.
+list. The default covers the common conventions: `data-testid, data-test, data-cy, data-qa, dusk,
+wire:model, name`. A configured attribute also matches its modifier variants (`wire:model` matches
+`wire:model.live`). A `test_id` selector stores the actual attribute and is replayed as an escaped CSS
+attribute selector, so `set_test_id_attribute` is not needed.
 
 ## D5 — Tag normalisation
 
@@ -61,3 +73,9 @@ Browsers are not bundled: the desktop app runs `playwright install chromium` in 
 
 Frozen builds set `PLAYWRIGHT_BROWSERS_PATH` to `<user data dir>/browsers`, so browsers survive app
 updates and never need write access to the install directory.
+
+## D7 — UI theme and languages
+
+Own Qt stylesheet built from light and dark colour tokens (`ui/theme.py`), following the system scheme
+unless the user picks one in Settings. English source strings, Dutch translation in
+`ui/i18n/browsertests_nl.ts`; `packaging/update_translations.py` refreshes and compiles it.

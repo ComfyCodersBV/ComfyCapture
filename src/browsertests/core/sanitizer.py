@@ -7,6 +7,7 @@ directly (address bar, back button) rather than as a side effect of a recorded a
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from typing import Any
@@ -17,6 +18,15 @@ from browsertests.core.models import Action, Step
 
 NAVIGATION_GRACE_MS = 2500
 SECRET_PLACEHOLDER = "{{secret:password}}"
+CONSENT_PATTERN = re.compile(
+    r"cookiebot|cybot|onetrust|didomi|cookielaw|cookie-?consent|cookie-?banner|cookie-?notice|cmplz|klaro"
+    r"|iubenda|usercentrics|quantcast|trustarc|\bcc-(?:allow|btn|dismiss)",
+    re.IGNORECASE,
+)
+CONSENT_NOTE = (
+    "Cookie banner: move this click to the project's setup steps or a consent cookie, "
+    "otherwise every test depends on the banner showing up."
+)
 
 EVENT_ACTIONS = {
     "click": Action.CLICK,
@@ -84,6 +94,10 @@ def relative_url(url: str, base_url: str) -> str:
     return result
 
 
+def is_consent(event: RecordedEvent) -> bool:
+    return any(CONSENT_PATTERN.search(str(candidate.get("value", ""))) for candidate in event.candidates)
+
+
 class StepBuilder:
     def __init__(
         self,
@@ -105,10 +119,12 @@ class StepBuilder:
     def steps(self) -> tuple[Step, ...]:
         return tuple(self._steps)
 
-    def navigation(self, url: str, time: float, page_index: int = 0) -> bool:
+    def navigation(self, url: str, time: float, page_index: int = 0, requested: bool = False) -> bool:
         if page_index != 0 or not url.startswith(("http://", "https://")):
             return False
-        caused = self._last_activity is not None and time - self._last_activity <= self._grace
+        caused = (
+            not requested and self._last_activity is not None and time - self._last_activity <= self._grace
+        )
         self._last_activity = time
         if caused:
             return False
@@ -116,7 +132,10 @@ class StepBuilder:
         last = self._steps[-1] if self._steps else None
         if last is not None and last.action is Action.NAVIGATE and last.url == path:
             return False
-        self._append(Step(ir.new_step_id(), Action.NAVIGATE, url=path), None)
+        note = None
+        if path.startswith(("http://", "https://")):
+            note = f"Leaves the environment ({self._base_url}); this step will not follow other environments."
+        self._append(Step(ir.new_step_id(), Action.NAVIGATE, url=path, note=note), None)
         return True
 
     def add(self, event: RecordedEvent) -> bool:
@@ -139,6 +158,16 @@ class StepBuilder:
 
         if action is Action.CLICK and self._mobile:
             action = Action.TAP
+
+        last = self._steps[-1] if self._steps else None
+        if (
+            action in (Action.CLICK, Action.TAP)
+            and last is not None
+            and last.action is Action.FILL
+            and event.element_key is not None
+            and self._keys.get(last.id) == event.element_key
+        ):
+            return False
 
         step = Step(
             ir.new_step_id(),
@@ -200,6 +229,8 @@ class StepBuilder:
 
     @staticmethod
     def _note(action: Action, event: RecordedEvent) -> str | None:
+        if action in (Action.CLICK, Action.TAP) and is_consent(event):
+            return CONSENT_NOTE
         if action is Action.FILL and event.sensitive:
             return "Password field: point this at the right secret."
         if action is Action.SET_INPUT_FILES:

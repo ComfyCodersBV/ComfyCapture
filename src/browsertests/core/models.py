@@ -36,6 +36,9 @@ VALUE_ACTIONS = frozenset(
 )
 
 
+DEFAULT_TEST_ID_ATTRIBUTES = ("data-testid", "data-test", "data-cy", "data-qa", "dusk", "wire:model", "name")
+
+
 class SelectorKind(StrEnum):
     TEST_ID = "test_id"
     ID = "id"
@@ -88,6 +91,7 @@ class Device:
     name: str | None = None
     width: int = 1440
     height: int = 900
+    fullscreen: bool = False
 
     @property
     def is_mobile(self) -> bool:
@@ -97,6 +101,8 @@ class Device:
     def label(self) -> str:
         if self.is_mobile:
             return self.name or "mobile"
+        if self.fullscreen:
+            return f"desktop full screen ({self.width}x{self.height})"
         return f"desktop {self.width}x{self.height}"
 
 
@@ -118,7 +124,7 @@ class Project:
     id: int | None
     slug: str
     name: str
-    test_id_attributes: tuple[str, ...] = ("data-testid",)
+    test_id_attributes: tuple[str, ...] = DEFAULT_TEST_ID_ATTRIBUTES
     created_at: str = ""
 
 

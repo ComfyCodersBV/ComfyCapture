@@ -14,7 +14,7 @@ from browsertests.core.session import SessionPayload
 
 pytestmark = pytest.mark.browser
 
-ATTRIBUTES = ("dusk", "data-testid")
+ATTRIBUTES = ("dusk", "data-testid", "wire:model")
 
 
 def wait_for_steps(page, recorder: Recorder, count: int) -> None:
@@ -116,6 +116,24 @@ def test_mobile_clicks_are_recorded_as_taps(playwright, browser, site_url: str) 
     context.close()
 
     assert [step.action for step in recorder.steps] == [Action.NAVIGATE, Action.TAP]
+
+
+def test_livewire_model_attribute_with_modifier_is_a_test_attribute(browser, site_url: str) -> None:
+    context = browser.new_context()
+    recorder = Recorder(context, site_url, ATTRIBUTES)
+    recorder.install()
+    page = context.new_page()
+    recorder.recording = True
+
+    page.goto(f"{site_url}/form.html")
+    page.get_by_placeholder("Search products").fill("socks")
+    wait_for_steps(page, recorder, 2)
+    fill = recorder.steps[-1]
+    resolved = runner.resolve_target(page, fill.id, fill.target, 2000)
+    context.close()
+
+    assert (fill.target.primary.attribute, fill.target.primary.value) == ("wire:model.live", "search")
+    assert resolved[1] == 0
 
 
 def test_session_replays_saved_steps_before_recording(site_url: str, tmp_path) -> None:

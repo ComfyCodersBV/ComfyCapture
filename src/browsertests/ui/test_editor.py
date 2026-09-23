@@ -6,13 +6,11 @@ from typing import Any
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
-    QDialogButtonBox,
-    QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -23,6 +21,7 @@ from browsertests.core.session import SessionPayload
 from browsertests.ui.core_process import CoreProcess
 from browsertests.ui.dialogs import split_list
 from browsertests.ui.recording_view import fill_steps_table, steps_table
+from browsertests.ui.widgets import Card, IconButton, enable_with_selection, field_label, muted
 
 
 class ReviewDialog(QDialog):
@@ -31,7 +30,7 @@ class ReviewDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle(self.tr("Review test"))
-        self.resize(1000, 620)
+        self.resize(1080, 720)
         self._test = test
         self._project = project
         self._environment = environment
@@ -43,46 +42,64 @@ class ReviewDialog(QDialog):
         self.description = QLineEdit(test.description)
         self.destructive = QCheckBox(self.tr("This test changes data (places orders, sends e-mails, pays)"))
         self.destructive.setChecked(test.destructive)
-        form = QFormLayout()
-        form.addRow(self.tr("Name"), self.name)
-        form.addRow(self.tr("Tags"), self.tags)
-        form.addRow(self.tr("Description"), self.description)
-        form.addRow(self.tr("Device"), QLabel(test.device.label))
-        form.addRow("", self.destructive)
+        self.name.setPlaceholderText(self.tr("e.g. Guest checkout"))
+        self.tags.setPlaceholderText("CINF-19, checkout")
+        self.description.setPlaceholderText(self.tr("What this test proves"))
+        title = QLabel(self.tr("Review test"))
+        title.setObjectName("PageTitle")
+        subtitle = muted(
+            self.tr("{device}  ·  {environment} ({url})").format(
+                device=test.device.label, environment=environment.name, url=environment.base_url
+            )
+        )
+
+        form = QGridLayout()
+        form.setHorizontalSpacing(16)
+        form.setVerticalSpacing(4)
+        form.addWidget(field_label(self.tr("Name"), True), 0, 0)
+        form.addWidget(field_label(self.tr("Tags"), False), 0, 1)
+        form.addWidget(self.name, 1, 0)
+        form.addWidget(self.tags, 1, 1)
+        form.addWidget(field_label(self.tr("Description"), False), 2, 0, 1, 2)
+        form.addWidget(self.description, 3, 0, 1, 2)
+        form.addWidget(self.destructive, 4, 0, 1, 2)
 
         self.table = steps_table(self)
         self.status = QLabel()
+        self.status.setObjectName("Status")
         self.status.setWordWrap(True)
 
-        self.up_button = QPushButton(self.tr("Move up"))
-        self.down_button = QPushButton(self.tr("Move down"))
-        self.remove_button = QPushButton(self.tr("Remove step"))
-        self.verify_button = QPushButton(self.tr("Verify selectors"))
+        self.verify_button = IconButton(self.tr("Verify selectors"), "shield", "secondary", self._verify)
         self.verify_button.setToolTip(
             self.tr("Replays the test headless and keeps only selectors that match the recorded element.")
         )
-        self.up_button.clicked.connect(lambda: self._move(-1))
-        self.down_button.clicked.connect(lambda: self._move(1))
-        self.remove_button.clicked.connect(self._remove)
-        self.verify_button.clicked.connect(self._verify)
+        steps_card = Card(self.tr("Steps"), self.tr("Select a step to move or remove it."))
+        steps_card.add_action(self.verify_button)
         step_buttons = QHBoxLayout()
-        for button in (self.up_button, self.down_button, self.remove_button):
+        move_up = IconButton(self.tr("Move up"), "up", "ghost", lambda: self._move(-1))
+        move_down = IconButton(self.tr("Move down"), "down", "ghost", lambda: self._move(1))
+        remove = IconButton(self.tr("Remove step"), "trash", "danger", self._remove)
+        for button in (move_up, move_down, remove):
             step_buttons.addWidget(button)
+        enable_with_selection(self.table, move_up, move_down, remove)
         step_buttons.addStretch()
-        step_buttons.addWidget(self.verify_button)
+        steps_card.body.addWidget(self.table, 1)
+        steps_card.body.addLayout(step_buttons)
+        steps_card.body.addWidget(self.status)
 
-        self.buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
-        )
-        self.buttons.accepted.connect(self._save)
-        self.buttons.rejected.connect(self.reject)
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        buttons.addWidget(IconButton(self.tr("Discard"), variant="ghost", on_click=self.reject))
+        buttons.addWidget(IconButton(self.tr("Save test"), "check", "primary", self._save))
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 22, 24, 20)
+        layout.setSpacing(12)
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
         layout.addLayout(form)
-        layout.addWidget(self.table)
-        layout.addLayout(step_buttons)
-        layout.addWidget(self.status)
-        layout.addWidget(self.buttons)
+        layout.addWidget(steps_card, 1)
+        layout.addLayout(buttons)
         self._refresh()
 
     def result_test(self) -> Test:

@@ -14,6 +14,7 @@ def main() -> int:
 
     from browsertests.core import db
     from browsertests.ui.main_window import MainWindow
+    from browsertests.ui.theme import apply_theme, follow_system
     from browsertests.ui.translations import install_translator
 
     application = QApplication(sys.argv)
@@ -21,6 +22,8 @@ def main() -> int:
     application.setOrganizationName(db.APP_AUTHOR)
     application.setDesktopFileName("nl.comfycoders.BrowserTests")
     install_translator(application)
+    apply_theme(application)
+    follow_system(application)
     window = MainWindow(db.connect(db.default_database_path()))
     window.show()
     return application.exec()

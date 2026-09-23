@@ -82,11 +82,16 @@ def selector_from_candidate(candidate: Mapping[str, Any]) -> Selector | None:
     )
 
 
+def attribute_position(attribute: str, test_id_attributes: tuple[str, ...]) -> int:
+    for position, configured in enumerate(test_id_attributes):
+        if attribute == configured or attribute.startswith(f"{configured}."):
+            return position
+    return len(test_id_attributes)
+
+
 def rank_key(selector: Selector, test_id_attributes: tuple[str, ...]) -> tuple[int, int]:
     if selector.kind is SelectorKind.TEST_ID:
-        attribute = selector.attribute or ""
-        position = test_id_attributes.index(attribute) if attribute in test_id_attributes else 99
-        return (KIND_ORDER[selector.kind], position)
+        return (KIND_ORDER[selector.kind], attribute_position(selector.attribute or "", test_id_attributes))
     if selector.kind is SelectorKind.ID and selector.suspicious:
         return (SUSPICIOUS_ID_RANK, 0)
     return (KIND_ORDER[selector.kind], 0)
@@ -110,6 +115,10 @@ def target_from_candidates(
     return rank([selector for selector in selectors if selector is not None], test_id_attributes)
 
 
+def css_identifier(name: str) -> str:
+    return re.sub(r"([^A-Za-z0-9_-])", r"\\\1", name)
+
+
 def css_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -117,7 +126,7 @@ def css_string(value: str) -> str:
 def to_locator(scope: Page | Frame, selector: Selector) -> Locator:
     match selector.kind:
         case SelectorKind.TEST_ID:
-            return scope.locator(f"[{selector.attribute}={css_string(selector.value)}]")
+            return scope.locator(f"[{css_identifier(selector.attribute or '')}={css_string(selector.value)}]")
         case SelectorKind.ID:
             return scope.locator(f"[id={css_string(selector.value)}]")
         case SelectorKind.LABEL:

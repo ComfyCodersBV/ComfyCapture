@@ -71,10 +71,14 @@ def absolute_url(url: str, base_url: str) -> str:
     return base_url.rstrip("/") + "/" + url.lstrip("/")
 
 
-def context_options(playwright: Playwright, device: Device, config: EnvironmentConfig) -> dict[str, Any]:
+def context_options(
+    playwright: Playwright, device: Device, config: EnvironmentConfig, fit_window: bool = False
+) -> dict[str, Any]:
     options: dict[str, Any] = {}
     if device.is_mobile:
         options.update(playwright.devices[device.name or ""])
+    elif fit_window:
+        options["no_viewport"] = True
     else:
         options["viewport"] = {"width": device.width, "height": device.height}
     if config.locale:

@@ -8,6 +8,7 @@ browser is closed. Keeping the browser in its own process keeps the desktop even
 from __future__ import annotations
 
 import json
+import queue
 import sys
 import threading
 from collections.abc import Sequence
@@ -18,9 +19,13 @@ from typing import Any
 from browsertests.core import ir, runner
 from browsertests.core.models import Device, EnvironmentConfig, Step
 from browsertests.core.recorder import Recorder
+from browsertests.core.screencast import InputBridge, Screencast
 from browsertests.core.secrets import SecretStore
+from browsertests.core.window import WindowLock
 
 POLL_MS = 100
+VIEWER_POLL_MS = 15
+VIEWER_RENDER_SCALE = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +39,7 @@ class SessionPayload:
     steps: tuple[Step, ...] = ()
     variables: dict[str, str] = field(default_factory=dict)
     headless: bool = False
+    viewer: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -51,6 +57,7 @@ class SessionPayload:
             "steps": [ir.step_to_dict(step) for step in self.steps],
             "variables": self.variables,
             "headless": self.headless,
+            "viewer": self.viewer,
         }
 
     @classmethod
@@ -65,6 +72,7 @@ class SessionPayload:
             steps=tuple(ir.step_from_dict(step) for step in document.get("steps", [])),
             variables=dict(document.get("variables") or {}),
             headless=bool(document.get("headless", False)),
+            viewer=bool(document.get("viewer", False)),
         )
 
 
@@ -83,24 +91,64 @@ def outcome_to_dict(outcome: runner.StepOutcome) -> dict[str, Any]:
     }
 
 
-def watch_stdin(stop: threading.Event) -> None:
+def watch_stdin(commands: queue.Queue[dict[str, Any]], stop: threading.Event) -> None:
     for line in sys.stdin:
-        if line.strip() == "stop":
+        text = line.strip()
+        if text == "stop":
             break
+        try:
+            command = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(command, dict):
+            commands.put(command)
     stop.set()
 
 
-def record(payload: SessionPayload, stop: threading.Event) -> tuple[Step, ...]:
+def drain(
+    commands: queue.Queue[dict[str, Any]],
+    bridge: InputBridge | None,
+    recorder: Recorder,
+    screencast: Screencast | None = None,
+) -> None:
+    while True:
+        try:
+            command = commands.get_nowait()
+        except queue.Empty:
+            return
+        if bridge is None:
+            continue
+        try:
+            if command.get("type") == "screencast_size" and screencast is not None:
+                screencast.resize(int(command.get("width", 0)), int(command.get("height", 0)))
+                continue
+            if command.get("type") == "navigate" and command.get("url"):
+                recorder.request_navigation(str(command["url"]))
+            bridge.handle(command)
+        except Exception as error:
+            emit({"type": "error", "message": runner.first_line(str(error))})
+
+
+def record(
+    payload: SessionPayload, stop: threading.Event, commands: queue.Queue[dict[str, Any]] | None = None
+) -> tuple[Step, ...]:
     from playwright.sync_api import sync_playwright
 
     secrets = SecretStore(payload.project_slug)
     resolver = runner.VariableResolver(payload.variables, secrets.get)
 
+    commands = commands if commands is not None else queue.Queue()
+    fullscreen = payload.device.fullscreen and not payload.device.is_mobile
+    viewer = payload.viewer and not fullscreen
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=payload.headless)
-        context = browser.new_context(
-            **runner.context_options(playwright, payload.device, payload.environment)
+        arguments = ["--start-maximized"] if fullscreen else []
+        if viewer:
+            arguments.append(f"--force-device-scale-factor={VIEWER_RENDER_SCALE}")
+        browser = playwright.chromium.launch(headless=payload.headless or viewer, args=arguments)
+        options = runner.context_options(
+            playwright, payload.device, payload.environment, fit_window=fullscreen
         )
+        context = browser.new_context(**options)
         recorder = Recorder(
             context,
             payload.base_url,
@@ -113,6 +161,33 @@ def record(payload: SessionPayload, stop: threading.Event) -> tuple[Step, ...]:
         )
         recorder.install()
         page = context.new_page()
+        lock = None
+        bridge = None
+        screencast = None
+        if viewer:
+            size = options.get("viewport") or {"width": payload.device.width, "height": payload.device.height}
+            screencast = Screencast(context, page, emit, (size["width"] * 2, size["height"] * 2))
+            bridge = InputBridge(context, page, touch=bool(options.get("has_touch")))
+            page.on(
+                "framenavigated",
+                lambda frame: (
+                    emit({"type": "location", "url": frame.url}) if frame == page.main_frame else None
+                ),
+            )
+            emit(
+                {
+                    "type": "viewer",
+                    "width": size["width"],
+                    "height": size["height"],
+                    "mobile": payload.device.is_mobile,
+                }
+            )
+        if not fullscreen and not payload.headless and not viewer:
+            viewport = options.get("viewport") or {
+                "width": payload.device.width,
+                "height": payload.device.height,
+            }
+            lock = WindowLock.create(browser, context, page, (viewport["width"], viewport["height"]))
 
         if payload.steps:
             emit({"type": "status", "status": "replaying"})
@@ -143,11 +218,18 @@ def record(payload: SessionPayload, stop: threading.Event) -> tuple[Step, ...]:
             if not open_pages:
                 break
             try:
-                open_pages[0].wait_for_timeout(POLL_MS)
+                open_pages[0].wait_for_timeout(VIEWER_POLL_MS if viewer else POLL_MS)
             except Exception:
                 continue
+            drain(commands, bridge, recorder, screencast)
+            if lock is not None:
+                lock.enforce()
 
         steps = recorder.steps
+        if screencast is not None:
+            screencast.stop()
+        if fullscreen and recorder.viewport is not None:
+            emit({"type": "viewport", "width": recorder.viewport[0], "height": recorder.viewport[1]})
         if browser.is_connected():
             browser.close()
         return steps
@@ -160,9 +242,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     payload = SessionPayload.from_dict(json.loads(Path(arguments[0]).read_text(encoding="utf-8")))
     stop = threading.Event()
-    threading.Thread(target=watch_stdin, args=(stop,), daemon=True).start()
+    commands: queue.Queue[dict[str, Any]] = queue.Queue()
+    threading.Thread(target=watch_stdin, args=(commands, stop), daemon=True).start()
     try:
-        steps = record(payload, stop)
+        steps = record(payload, stop, commands)
     except Exception as error:
         emit({"type": "error", "message": runner.first_line(str(error)), "fatal": True})
         return 1

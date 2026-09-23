@@ -40,6 +40,11 @@ class CoreProcess(QObject):
     def start_command(self, command: list[str]) -> None:
         self._process.start(command[0], command[1:])
 
+    def send(self, command: dict[str, Any]) -> None:
+        if self._process.state() != QProcess.ProcessState.Running:
+            return
+        self._process.write((json.dumps(command) + "\n").encode("utf-8"))
+
     def stop(self) -> None:
         if self._process.state() == QProcess.ProcessState.NotRunning:
             return

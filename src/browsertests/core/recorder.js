@@ -10,6 +10,7 @@
     const elementKeys = new WeakMap();
     let elementCounter = 0;
     let mode = 'record';
+    let lastEnterTime = 0;
     let toolbarHost = null;
     let highlight = null;
 
@@ -28,7 +29,12 @@
         if (typeof window.__btEmit !== 'function') {
             return;
         }
-        window.__btEmit(Object.assign({ time: Date.now(), url: location.href, topFrame: isTopFrame }, event));
+        window.__btEmit(Object.assign({
+            time: Date.now(),
+            url: location.href,
+            topFrame: isTopFrame,
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+        }, event));
     };
 
     const normalize = (text) => (text || '').replace(/\s+/g, ' ').trim();
@@ -143,7 +149,20 @@
     const looksGenerated = (id) => /\d{3,}|:|^(wire|headlessui|radix|react|mui|ember|select2)[-_]?/i.test(id)
         || /[-_]\d+$/.test(id);
 
-    const attributeSelector = (name, value) => `[${name}="${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`;
+    const attributeSelector = (name, value) =>
+        `[${CSS.escape(name)}="${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`;
+
+    const testAttribute = (element, configured) => {
+        if (element.hasAttribute(configured)) {
+            return configured;
+        }
+        const modifiers = Array.from(element.attributes).find((attribute) => attribute.name.startsWith(`${configured}.`));
+        return modifiers ? modifiers.name : null;
+    };
+
+    const testAttributes = (element) => config.testIdAttributes
+        .map((configured) => testAttribute(element, configured))
+        .filter((name) => name && element.getAttribute(name));
 
     const isUnique = (selector, element) => {
         try {
@@ -159,7 +178,7 @@
         let node = element;
         while (node && node.nodeType === Node.ELEMENT_NODE && node !== document.documentElement) {
             if (node !== element) {
-                const anchorAttribute = config.testIdAttributes.find((name) => node.getAttribute(name));
+                const anchorAttribute = testAttributes(node).find((name) => name !== 'name');
                 if (anchorAttribute) {
                     parts.unshift(attributeSelector(anchorAttribute, node.getAttribute(anchorAttribute)));
                     break;
@@ -190,7 +209,7 @@
 
     const candidates = (element) => {
         const list = [];
-        for (const attribute of config.testIdAttributes) {
+        for (const attribute of testAttributes(element)) {
             const value = element.getAttribute(attribute);
             if (value) {
                 list.push({ kind: 'test_id', attribute, value, unique: isUnique(attributeSelector(attribute, value), element) });
@@ -294,6 +313,9 @@
             return;
         }
         const element = retarget(raw);
+        if (element === document.documentElement || element === document.body) {
+            return;
+        }
         if (isToggle(element) || element instanceof HTMLSelectElement || element instanceof HTMLOptionElement) {
             return;
         }
@@ -305,6 +327,9 @@
             return;
         }
         if (event.detail > 1) {
+            return;
+        }
+        if (event.detail === 0 && Date.now() - lastEnterTime < 500) {
             return;
         }
         emit({ type: 'click', target: describeElement(element), button: event.button, modifiers: modifiersOf(event) });
@@ -361,6 +386,9 @@
         if (!element || mode !== 'record' || event.isTrusted === false || event.repeat) {
             return;
         }
+        if (event.key === 'Enter') {
+            lastEnterTime = Date.now();
+        }
         const inText = isTextInput(element);
         const recorded = RECORDED_KEYS.includes(event.key) || (!inText && NAVIGATION_KEYS.includes(event.key));
         if (!recorded) {
@@ -400,14 +428,24 @@
         }
     };
 
+    const ICONS = {
+        record: '<circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/>',
+        assertVisible: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+        assertText: '<path d="M4 7V5h16v2"/><path d="M9 19h6"/><path d="M12 5v14"/>',
+        assertValue: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01"/><path d="M11 12h6"/>',
+        assertChecked: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/>',
+        hover: '<path d="m4 4 7 17 2.5-7.5L21 11Z"/>',
+    };
     const BUTTONS = [
-        ['record', '● Record'],
-        ['assertVisible', 'Visible'],
-        ['assertText', 'Text'],
-        ['assertValue', 'Value'],
-        ['assertChecked', 'Checked'],
-        ['hover', 'Hover'],
+        ['record', 'Record', 'Record clicks and typing'],
+        ['assertVisible', 'Visible', 'Assert that an element is visible'],
+        ['assertText', 'Text', 'Assert the text of an element'],
+        ['assertValue', 'Value', 'Assert the value of a field'],
+        ['assertChecked', 'Checked', 'Assert that a checkbox is checked'],
+        ['hover', 'Hover', 'Record hovering over an element'],
     ];
+    const iconSvg = (name) => `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
 
     let toolbarRoot = null;
 
@@ -418,6 +456,7 @@
         for (const button of toolbarRoot.querySelectorAll('button[data-mode]')) {
             button.classList.toggle('active', button.dataset.mode === mode);
         }
+        toolbarRoot.querySelector('.bar').classList.toggle('picking', PICK_MODES.includes(mode));
     };
 
     const makeDraggable = (bar, grip) => {
@@ -451,22 +490,32 @@
         toolbarRoot.innerHTML = `
             <style>
                 :host { all: initial; }
-                .bar { position: fixed; z-index: 2147483647; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px;
-                    flex-wrap: wrap; max-width: calc(100vw - 16px); padding: 4px; border-radius: 8px;
-                    background: #1f2430; box-shadow: 0 4px 16px rgba(0,0,0,.35); font: 12px/1 system-ui, sans-serif; }
-                .grip { cursor: move; padding: 6px 4px; color: #9aa3b2; user-select: none; }
-                button { all: unset; cursor: pointer; padding: 6px 8px; border-radius: 6px; color: #d7dae0; }
-                button:hover { background: #2e3440; }
-                button.active { background: #3b82f6; color: #fff; }
-                .hint { color: #9aa3b2; padding: 6px 4px; }
+                .bar { position: fixed; z-index: 2147483647; bottom: 10px; left: 50%; transform: translateX(-50%);
+                    display: flex; align-items: center; gap: 2px; flex-wrap: nowrap; white-space: nowrap;
+                    padding: 4px; border-radius: 10px; background: #1d1d26; border: 1px solid #2e2e3b;
+                    box-shadow: 0 6px 20px rgba(0,0,0,.35); font: 12px/1 system-ui, sans-serif; }
+                .grip { cursor: move; padding: 6px 4px; color: #6b6b7b; user-select: none; }
+                button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+                    padding: 6px 8px; border-radius: 7px; color: #d7dae0; }
+                button:hover { background: #2e2e3b; }
+                button.active { background: #7c3aed; color: #fff; }
+                button[data-mode=record] svg { color: #f87171; }
+                button[data-mode=record].active svg { color: #fff; }
+                .hint { display: none; color: #c4b5fd; padding: 6px 6px 6px 4px; }
+                .bar.picking .hint { display: inline; }
+                @media (max-width: 640px) {
+                    .label { display: none; }
+                    button { padding: 7px; }
+                    .bar.picking .hint { display: none; }
+                }
                 .highlight { position: fixed; z-index: 2147483646; pointer-events: none; display: none;
-                    border: 2px solid #3b82f6; background: rgba(59,130,246,.15); border-radius: 3px; }
+                    border: 2px solid #8b5cf6; background: rgba(139,92,246,.15); border-radius: 3px; }
             </style>
             <div class="highlight"></div>
             <div class="bar">
                 <span class="grip">⠿</span>
-                ${BUTTONS.map(([name, label]) => `<button data-mode="${name}">${label}</button>`).join('')}
-                <span class="hint">Esc: cancel</span>
+                ${BUTTONS.map(([name, label, title]) => `<button data-mode="${name}" title="${title}">${iconSvg(name)}<span class="label">${label}</span></button>`).join('')}
+                <span class="hint">Click an element · Esc cancels</span>
             </div>`;
         highlight = toolbarRoot.querySelector('.highlight');
         toolbarRoot.addEventListener('click', (event) => {
@@ -491,8 +540,20 @@
         listen(type, blockInPickMode);
     }
 
+    let resizeTimer = null;
+    const reportViewport = () => {
+        if (isTopFrame) {
+            emit({ type: 'viewport' });
+        }
+    };
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(reportViewport, 250);
+    });
+
     const start = () => {
         installToolbar();
+        reportViewport();
         if (typeof window.__btState === 'function') {
             Promise.resolve(window.__btState()).then((state) => {
                 if (state && state.mode) {

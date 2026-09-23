@@ -77,3 +77,45 @@ def test_password_values_never_enter_the_step() -> None:
 def test_relative_url_keeps_foreign_hosts_absolute() -> None:
     assert relative_url("https://shop.test/nl/products?id=4#top", BASE) == "/products?id=4#top"
     assert relative_url("https://pay.example/checkout", BASE) == "https://pay.example/checkout"
+
+
+def test_base_url_trailing_slash_does_not_matter() -> None:
+    from browsertests.core.runner import absolute_url
+
+    assert absolute_url("/login", "https://shop.test/") == absolute_url("/login", "https://shop.test")
+    assert relative_url("https://shop.test/nl/cart", "https://shop.test/nl/") == "/cart"
+
+
+def test_cookie_banner_clicks_are_flagged() -> None:
+    builder = StepBuilder(BASE, (), mobile=True)
+    builder.add(event("click", 0, key="CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll"))
+    builder.add(event("click", 10, key="add-to-cart"))
+
+    assert "Cookie banner" in (builder.steps[0].note or "")
+    assert builder.steps[1].note is None
+
+
+def test_navigation_outside_the_environment_is_flagged() -> None:
+    builder = StepBuilder(BASE, ())
+    builder.navigation("https://shop.test/nl/", 0)
+    builder.navigation("https://other.example/nl", 10_000)
+
+    assert builder.steps[0].note is None
+    assert "Leaves the environment" in (builder.steps[1].note or "")
+
+
+def test_late_click_into_the_field_being_typed_in_is_ignored() -> None:
+    builder = StepBuilder(BASE, (), mobile=True)
+    builder.add(event("fill", 0, value="ja"))
+    builder.add(event("click", 300))
+    builder.add(event("fill", 400, value="jane"))
+
+    assert [(step.action, step.value) for step in builder.steps] == [(Action.FILL, "jane")]
+
+
+def test_requested_navigation_is_recorded_even_right_after_an_action() -> None:
+    builder = StepBuilder(BASE, (), navigation_grace_ms=1000)
+    builder.add(event("click", 0))
+    builder.navigation("https://shop.test/nl/cart", 200, requested=True)
+
+    assert builder.steps[-1].url == "/cart"

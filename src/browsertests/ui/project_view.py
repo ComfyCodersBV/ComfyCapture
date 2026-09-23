@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Callable
 from dataclasses import replace
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog,
-    QGroupBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
-    QPushButton,
+    QScrollArea,
+    QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -27,22 +26,13 @@ from browsertests.ui import formatting
 from browsertests.ui.dialogs import EnvironmentDialog, RecordSetupDialog, split_list
 from browsertests.ui.recording_view import RecordingDialog
 from browsertests.ui.test_editor import ReviewDialog
-
-
-def table(parent: QWidget, headers: list[str]) -> QTableWidget:
-    widget = QTableWidget(0, len(headers), parent)
-    widget.setHorizontalHeaderLabels(headers)
-    widget.horizontalHeader().setStretchLastSection(True)
-    widget.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-    widget.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-    widget.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-    widget.verticalHeader().setVisible(False)
-    return widget
+from browsertests.ui.widgets import Card, IconButton, data_table, enable_with_selection, fit_rows, muted
 
 
 def set_row(widget: QTableWidget, row: int, key: int, cells: tuple[str, ...]) -> None:
     for column, text in enumerate(cells):
         item = QTableWidgetItem(text)
+        item.setToolTip(text)
         if column == 0:
             item.setData(Qt.ItemDataRole.UserRole, key)
         widget.setItem(row, column, item)
@@ -55,73 +45,128 @@ def selected_key(widget: QTableWidget) -> int | None:
     return widget.item(rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
 
 
-class ProjectView(QWidget):
+class ProjectView(QStackedWidget):
+    edit_project_requested = Signal()
+    delete_project_requested = Signal()
+    new_project_requested = Signal()
+
     def __init__(self, connection: sqlite3.Connection, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._environments = db.EnvironmentRepository(connection)
         self._tests = db.TestRepository(connection)
         self._project: Project | None = None
-
-        self.title = QLabel()
-        self.title.setStyleSheet("font-size: 18px; font-weight: 600;")
-        self.attributes = QLabel()
-
-        self.environment_table = table(
-            self, [self.tr("Environment"), self.tr("Base URL"), self.tr("Destructive")]
-        )
-        environment_buttons = self._buttons(
-            (self.tr("Add"), self._add_environment),
-            (self.tr("Edit"), self._edit_environment),
-            (self.tr("Delete"), self._delete_environment),
-        )
-        environment_box = QGroupBox(self.tr("Environments"))
-        environment_layout = QVBoxLayout(environment_box)
-        environment_layout.addWidget(self.environment_table)
-        environment_layout.addLayout(environment_buttons)
-
-        self.tag_filter = QLineEdit()
-        self.tag_filter.setPlaceholderText(self.tr("Filter by tags, e.g. CINF-19, checkout"))
-        self.tag_filter.textChanged.connect(self._load_tests)
-        self.test_table = table(
-            self, [self.tr("Test"), self.tr("Device"), self.tr("Tags"), self.tr("Steps"), self.tr("Updated")]
-        )
-        self.test_table.doubleClicked.connect(self._review_test)
-        test_buttons = self._buttons(
-            (self.tr("Record new test"), self._record_test),
-            (self.tr("Continue recording"), self._continue_recording),
-            (self.tr("Review"), self._review_test),
-            (self.tr("Delete"), self._delete_test),
-        )
-        test_box = QGroupBox(self.tr("Tests"))
-        test_layout = QVBoxLayout(test_box)
-        test_layout.addWidget(self.tag_filter)
-        test_layout.addWidget(self.test_table)
-        test_layout.addLayout(test_buttons)
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.title)
-        layout.addWidget(self.attributes)
-        layout.addWidget(environment_box, 1)
-        layout.addWidget(test_box, 3)
+        self.addWidget(self._empty_page())
+        self.addWidget(self._project_page())
         self.set_project(None)
 
-    def _buttons(self, *definitions: tuple[str, Callable[[], None]]) -> QHBoxLayout:
-        row = QHBoxLayout()
-        for label, handler in definitions:
-            button = QPushButton(label)
-            button.clicked.connect(handler)
-            row.addWidget(button)
-        row.addStretch()
-        return row
+    def _empty_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.addStretch()
+        title = QLabel(self.tr("Record your first browser test"))
+        title.setObjectName("PageTitle")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        text = QLabel(
+            self.tr("Create a project for a website, add the environments it runs on, then record a test.")
+        )
+        text.setObjectName("EmptyState")
+        text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        text.setWordWrap(True)
+        button_row = QHBoxLayout()
+        button_row.addStretch()
+        button_row.addWidget(
+            IconButton(self.tr("Create a project"), "plus", "primary", self.new_project_requested.emit)
+        )
+        button_row.addStretch()
+        layout.addWidget(title)
+        layout.addWidget(text)
+        layout.addSpacing(12)
+        layout.addLayout(button_row)
+        layout.addStretch()
+        return page
+
+    def _project_page(self) -> QWidget:
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(18)
+
+        header = QHBoxLayout()
+        titles = QVBoxLayout()
+        titles.setSpacing(4)
+        self.title = QLabel()
+        self.title.setObjectName("PageTitle")
+        self.attributes = muted("")
+        titles.addWidget(self.title)
+        titles.addWidget(self.attributes)
+        header.addLayout(titles, 1)
+        header.addWidget(IconButton(self.tr("Edit"), "edit", "ghost", self.edit_project_requested.emit))
+        header.addWidget(IconButton(self.tr("Delete"), "trash", "danger", self.delete_project_requested.emit))
+        layout.addLayout(header)
+
+        environments = Card(
+            self.tr("Environments"), self.tr("Where the tests run, e.g. staging and production.")
+        )
+        self.environment_table = data_table(
+            self, [self.tr("Name"), self.tr("Base URL"), self.tr("Destructive tests")], stretch_column=1
+        )
+        self.environment_table.doubleClicked.connect(self._edit_environment)
+        edit_environment = IconButton(self.tr("Edit"), "edit", "ghost", self._edit_environment)
+        delete_environment = IconButton(self.tr("Delete"), "trash", "danger", self._delete_environment)
+        environments.add_action(edit_environment)
+        environments.add_action(delete_environment)
+        environments.add_action(
+            IconButton(self.tr("Add environment"), "plus", "secondary", self._add_environment)
+        )
+        enable_with_selection(self.environment_table, edit_environment, delete_environment)
+        self.environment_empty = muted(self.tr("No environments yet. Add one to start recording."))
+        environments.body.addWidget(self.environment_empty)
+        environments.body.addWidget(self.environment_table)
+        layout.addWidget(environments)
+
+        tests = Card(self.tr("Tests"), self.tr("Recorded tests. Double-click a test to review it."))
+        self.test_table = data_table(
+            self,
+            [self.tr("Test"), self.tr("Device"), self.tr("Tags"), self.tr("Steps"), self.tr("Updated")],
+            stretch_column=0,
+        )
+        self.test_table.setMinimumHeight(200)
+        self.test_table.doubleClicked.connect(self._review_test)
+        review = IconButton(self.tr("Review"), "edit", "ghost", self._review_test)
+        continue_recording = IconButton(
+            self.tr("Continue recording"), "continue", "ghost", self._continue_recording
+        )
+        delete_test = IconButton(self.tr("Delete"), "trash", "danger", self._delete_test)
+        for button in (review, continue_recording, delete_test):
+            tests.add_action(button)
+        tests.add_action(IconButton(self.tr("Record new test"), "record", "primary", self._record_test))
+        enable_with_selection(self.test_table, review, continue_recording, delete_test)
+        self.tag_filter = QLineEdit()
+        self.tag_filter.setPlaceholderText(self.tr("Filter by tags, e.g. CINF-19, checkout"))
+        self.tag_filter.setClearButtonEnabled(True)
+        self.tag_filter.textChanged.connect(self._load_tests)
+        self.test_empty = muted(self.tr("No tests yet. Record one with the button above."))
+        tests.body.addWidget(self.tag_filter)
+        tests.body.addWidget(self.test_empty)
+        tests.body.addWidget(self.test_table, 1)
+        layout.addWidget(tests, 1)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setWidget(content)
+        return scroll
 
     def set_project(self, project: Project | None) -> None:
         self._project = project
-        self.setEnabled(project is not None)
-        self.title.setText(project.name if project else self.tr("Select or create a project"))
+        self.setCurrentIndex(0 if project is None else 1)
+        if project is None:
+            return
+        self.title.setText(project.name)
         self.attributes.setText(
-            self.tr("Test attributes: {attributes}").format(attributes=", ".join(project.test_id_attributes))
-            if project
-            else ""
+            self.tr("Slug {slug}  ·  test attributes: {attributes}").format(
+                slug=project.slug, attributes=", ".join(project.test_id_attributes)
+            )
         )
         self._load_environments()
         self._load_tests()
@@ -135,7 +180,7 @@ class ProjectView(QWidget):
         environments = self._environment_list()
         self.environment_table.setRowCount(len(environments))
         for row, environment in enumerate(environments):
-            allowed = self.tr("allowed") if environment.allow_destructive else self.tr("refused")
+            allowed = self.tr("Allowed") if environment.allow_destructive else self.tr("Refused")
             set_row(
                 self.environment_table,
                 row,
@@ -143,6 +188,9 @@ class ProjectView(QWidget):
                 (environment.name, environment.base_url, allowed),
             )
         self.environment_table.resizeColumnsToContents()
+        fit_rows(self.environment_table, 1, 5)
+        self.environment_empty.setVisible(not environments)
+        self.environment_table.setVisible(bool(environments))
 
     def _load_tests(self) -> None:
         if self._project is None or self._project.id is None:
@@ -161,6 +209,13 @@ class ProjectView(QWidget):
             )
             set_row(self.test_table, row, item.id, cells)
         self.test_table.resizeColumnsToContents()
+        filtering = bool(self.tag_filter.text().strip())
+        self.test_empty.setText(
+            self.tr("No tests match these tags.")
+            if filtering
+            else self.tr("No tests yet. Record one with the button above.")
+        )
+        self.test_empty.setVisible(not stored)
 
     def _add_environment(self) -> None:
         if self._project is None or self._project.id is None:
@@ -211,6 +266,7 @@ class ProjectView(QWidget):
             device=test.device,
             environment=environment.config,
             steps=test.steps,
+            viewer=not test.device.fullscreen,
         )
 
     def _record_test(self) -> None:
@@ -232,11 +288,8 @@ class ProjectView(QWidget):
             tags=setup.test_tags(),
             device=setup.selected_device(),
         )
-        self._record(
-            test,
-            environment,
-            self._payload(self._project, environment, test, setup.start_path.text().strip() or "/"),
-        )
+        start_path = setup.start_path.text().strip() or "/"
+        self._record(test, environment, self._payload(self._project, environment, test, start_path))
 
     def _continue_recording(self) -> None:
         stored = self._selected_test()
@@ -251,7 +304,10 @@ class ProjectView(QWidget):
         recording = RecordingDialog(payload.to_dict(), self)
         if recording.exec() != QDialog.DialogCode.Accepted:
             return
-        self._review(replace(test, steps=recording.steps), environment)
+        device = test.device
+        if device.fullscreen and recording.viewport is not None:
+            device = replace(device, width=recording.viewport[0], height=recording.viewport[1])
+        self._review(replace(test, steps=recording.steps, device=device), environment)
 
     def _review_test(self) -> None:
         stored = self._selected_test()

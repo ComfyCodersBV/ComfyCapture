@@ -37,6 +37,7 @@ class Recorder:
         self._config = {"testIdAttributes": list(test_id_attributes), "toolbar": toolbar}
         self.recording = False
         self.mode = "record"
+        self.viewport: tuple[int, int] | None = None
 
     @property
     def steps(self) -> tuple[Step, ...]:
@@ -65,10 +66,20 @@ class Recorder:
         return self._pages.index(page)
 
     def _on_emit(self, source: dict[str, Any], payload: dict[str, Any]) -> None:
-        if not self.recording or not isinstance(payload, dict):
+        if not isinstance(payload, dict):
             return
-        event = RecordedEvent.from_payload(payload, self._page_index(source.get("page")))
+        page_index = self._page_index(source.get("page"))
+        viewport = payload.get("viewport")
+        if page_index == 0 and payload.get("topFrame", True) and isinstance(viewport, dict):
+            self.viewport = (int(viewport.get("width", 0)), int(viewport.get("height", 0)))
+        if not self.recording:
+            return
+        event = RecordedEvent.from_payload(payload, page_index)
         if self._builder.add(event):
+            self._changed()
+
+    def request_navigation(self, url: str) -> None:
+        if self.recording and self._builder.navigation(url, time.time() * 1000, requested=True):
             self._changed()
 
     def _on_set_mode(self, source: dict[str, Any], mode: str) -> None:
