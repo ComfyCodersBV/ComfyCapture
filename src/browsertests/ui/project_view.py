@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from browsertests.core import db, exchange, ir
+from browsertests.core import db, exchange, ir, pest
 from browsertests.core.models import Environment, Project, StoredTest, Test
 from browsertests.core.session import SessionPayload
 from browsertests.ui import formatting
@@ -176,6 +176,7 @@ class ProjectView(QStackedWidget):
         for button in (run_selected, review, continue_recording, delete_test):
             tests.add_action(button)
         tests.add_action(IconButton(self.tr("Export"), "download", "ghost", self._export))
+        tests.add_action(IconButton(self.tr("Pest"), "download", "ghost", self._export_pest))
         tests.add_action(IconButton(self.tr("Run all"), "continue", "secondary", self._run_all))
         tests.add_action(IconButton(self.tr("Record new test"), "record", "primary", self._record_test))
         enable_with_selection(self.test_table, run_selected, review, continue_recording, delete_test)
@@ -336,6 +337,42 @@ class ProjectView(QStackedWidget):
                 "Exported {count} tests to {directory}. Values of variables and secrets are not included."
             ).format(count=len(written), directory=directory),
         )
+
+    def _export_pest(self) -> None:
+        if self._project is None or self._project.id is None:
+            return
+        special = {self._project.setup_test_uuid, self._project.login_test_uuid}
+        selected = self._selected_test()
+        tests = (
+            [selected]
+            if selected
+            else [
+                stored
+                for stored in self._tests.for_project(self._project.id, split_list(self.tag_filter.text()))
+                if stored.test.id not in special
+            ]
+        )
+        if not tests:
+            QMessageBox.information(self, self.tr("Pest"), self.tr("There are no tests to export."))
+            return
+        directory = QFileDialog.getExistingDirectory(self, self.tr("Write Pest tests to, e.g. tests/Browser"))
+        if not directory:
+            return
+        written, problems = 0, []
+        for stored in tests:
+            try:
+                text = pest.render(stored.test)
+            except pest.PestExportError as error:
+                problems.append(str(error))
+                continue
+            (Path(directory) / pest.filename(stored.test)).write_text(text, encoding="utf-8")
+            written += 1
+        message = self.tr("Wrote {count} Pest tests to {directory}.").format(
+            count=written, directory=directory
+        )
+        if problems:
+            message += "\n\n" + self.tr("Skipped:") + "\n" + "\n".join(problems)
+        QMessageBox.information(self, self.tr("Pest"), message)
 
     def _add_environment(self) -> None:
         if self._project is None or self._project.id is None:

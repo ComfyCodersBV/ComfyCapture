@@ -41,6 +41,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     exporting.add_argument("--out", required=True, help="directory to write the files to")
 
+    pest_export = commands.add_parser("pest", help="write tests as Pest browser tests")
+    pest_export.add_argument("--project", required=True, help="project slug")
+    pest_export.add_argument(
+        "--tag", action="append", default=[], help="only tests with this tag (repeatable, ANDs)"
+    )
+    pest_export.add_argument("--out", required=True, help="directory to write the .php files to")
+
     importing = commands.add_parser("import", help="import exported JSON files")
     importing.add_argument("files", nargs="+", help="exported .json files")
 
@@ -189,6 +196,37 @@ def command_export(arguments: argparse.Namespace) -> int:
     return EXIT_PASSED
 
 
+def command_pest(arguments: argparse.Namespace) -> int:
+    from browsertests.core import db, pest
+
+    connection = db.connect(database_path(arguments.database))
+    project = db.ProjectRepository(connection).by_slug(arguments.project)
+    if project is None or project.id is None:
+        return fail(f"unknown project {arguments.project!r}")
+    special = {project.setup_test_uuid, project.login_test_uuid}
+    tests = [
+        stored
+        for stored in db.TestRepository(connection).for_project(project.id, tuple(arguments.tag))
+        if stored.test.id not in special
+    ]
+    if not tests:
+        return fail("no tests match the selection")
+    directory = Path(arguments.out)
+    directory.mkdir(parents=True, exist_ok=True)
+    problems = []
+    for stored in tests:
+        try:
+            text = pest.render(stored.test)
+        except pest.PestExportError as error:
+            problems.append(str(error))
+            continue
+        (directory / pest.filename(stored.test)).write_text(text, encoding="utf-8")
+        print(directory / pest.filename(stored.test))
+    for problem in problems:
+        sys.stderr.write(f"skipped: {problem}\n")
+    return EXIT_CONFIGURATION if problems else EXIT_PASSED
+
+
 def command_import(arguments: argparse.Namespace) -> int:
     from browsertests.core import db, exchange
     from browsertests.core.secrets import SecretStore
@@ -234,6 +272,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return command_export(arguments)
     if arguments.command == "import":
         return command_import(arguments)
+    if arguments.command == "pest":
+        return command_pest(arguments)
     parser.print_help()
     return EXIT_PASSED
 
