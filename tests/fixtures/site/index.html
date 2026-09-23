@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Shop</title></head>
+<body>
+<h1>Shop</h1>
+<a href="/form.html" dusk="to-form">Checkout</a>
+<button id="add" data-testid="add-to-cart" onclick="document.getElementById('cart').textContent = 'Cart: 1'">Add to cart</button>
+<button class="generated">Random id</button>
+<p id="cart">Cart: 0</p>
+<script>
+document.querySelector('.generated').id = 'btn-' + Math.random().toString(36).slice(2, 10);
+</script>
+</body>
+</html>

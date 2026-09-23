@@ -1,0 +1,93 @@
+stages:
+  - check
+  - test
+  - package
+
+variables:
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+  UV_FROZEN: "1"
+  PYINSTALLER_ARGS: "--noconfirm --clean --windowed --name BrowsertestSuite --collect-all playwright --collect-data browsertests --copy-metadata browsertests --distpath dist --workpath build packaging/entry.py"
+
+.linux:
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm
+  cache:
+    key: uv-linux
+    paths:
+      - .cache/uv
+
+lint:
+  extends: .linux
+  stage: check
+  script:
+    - uv sync --group dev
+    - uv run ruff check .
+    - uv run ruff format --check .
+
+core-headless:
+  stage: test
+  image: mcr.microsoft.com/playwright/python:v1.63.0-noble
+  variables:
+    UV_PYTHON_PREFERENCE: only-system
+  before_script:
+    - pip install --break-system-packages uv
+  script:
+    - uv sync --group dev
+    - uv run pytest -m "not gui" -q
+
+desktop-linux:
+  extends: .linux
+  stage: test
+  variables:
+    QT_QPA_PLATFORM: offscreen
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3 > /dev/null
+  script:
+    - uv sync --all-extras --group dev
+    - uv run playwright install --with-deps chromium
+    - uv run pytest -q
+
+package-linux:
+  extends: .linux
+  stage: package
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3 > /dev/null
+  script:
+    - uv sync --all-extras --group package
+    - uv run pyinstaller $PYINSTALLER_ARGS
+    - QT_QPA_PLATFORM=offscreen timeout 5 dist/BrowsertestSuite/BrowsertestSuite || test $? -eq 124
+  artifacts:
+    paths:
+      - dist/BrowsertestSuite
+    expire_in: 1 week
+
+package-macos:
+  stage: package
+  tags:
+    - saas-macos-medium-m1
+  image: macos-15-xcode-16
+  script:
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv sync --all-extras --group package
+    - uv run pyinstaller $PYINSTALLER_ARGS
+    - QT_QPA_PLATFORM=offscreen perl -e 'alarm 5; exec @ARGV' dist/BrowsertestSuite.app/Contents/MacOS/BrowsertestSuite || test $? -eq 142
+  artifacts:
+    paths:
+      - dist/BrowsertestSuite.app
+    expire_in: 1 week
+
+package-windows:
+  stage: package
+  tags:
+    - saas-windows-medium-amd64
+  script:
+    - powershell -Command "irm https://astral.sh/uv/install.ps1 | iex"
+    - $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
+    - uv sync --all-extras --group package
+    - uv run pyinstaller $PYINSTALLER_ARGS.Split(' ')
+    - $env:QT_QPA_PLATFORM = "offscreen"
+    - $process = Start-Process dist\BrowsertestSuite\BrowsertestSuite.exe -PassThru; Start-Sleep 5; if ($process.HasExited) { exit 1 }; Stop-Process $process
+  artifacts:
+    paths:
+      - dist/BrowsertestSuite
+    expire_in: 1 week

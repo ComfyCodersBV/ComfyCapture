@@ -1,0 +1,314 @@
+from __future__ import annotations
+
+import json
+import sqlite3
+from dataclasses import asdict, replace
+from datetime import UTC, datetime
+from pathlib import Path
+
+import platformdirs
+
+from browsertests.core import ir
+from browsertests.core.models import Environment, EnvironmentConfig, Project, StoredTest, Test
+
+APP_NAME = "BrowsertestSuite"
+APP_AUTHOR = "ComfyCoders"
+
+SCHEMA: tuple[str, ...] = (
+    """
+    CREATE TABLE projects (
+        id                 INTEGER PRIMARY KEY,
+        slug               TEXT NOT NULL UNIQUE,
+        name               TEXT NOT NULL,
+        test_id_attributes TEXT NOT NULL DEFAULT '["data-testid"]',
+        created_at         TEXT NOT NULL
+    );
+
+    CREATE TABLE environments (
+        id                INTEGER PRIMARY KEY,
+        project_id        INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        name              TEXT NOT NULL,
+        base_url          TEXT NOT NULL,
+        allow_destructive INTEGER NOT NULL DEFAULT 0,
+        config            TEXT NOT NULL,
+        UNIQUE (project_id, name)
+    );
+
+    CREATE TABLE tests (
+        id             INTEGER PRIMARY KEY,
+        project_id     INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        uuid           TEXT NOT NULL UNIQUE,
+        name           TEXT NOT NULL,
+        destructive    INTEGER NOT NULL DEFAULT 0,
+        ir             TEXT NOT NULL,
+        schema_version INTEGER NOT NULL,
+        updated_at     TEXT NOT NULL
+    );
+
+    CREATE TABLE test_tags (
+        test_id INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+        tag     TEXT NOT NULL,
+        PRIMARY KEY (test_id, tag)
+    );
+
+    CREATE INDEX idx_test_tags_tag ON test_tags(tag);
+
+    CREATE TABLE runs (
+        id                 INTEGER PRIMARY KEY,
+        test_id            INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+        environment_id     INTEGER NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
+        status             TEXT NOT NULL,
+        started_at         TEXT NOT NULL,
+        duration_ms        INTEGER NOT NULL,
+        failed_step_id     TEXT NULL,
+        message            TEXT NULL,
+        artifact_path      TEXT NULL,
+        playwright_version TEXT NOT NULL,
+        browser_version    TEXT NOT NULL
+    );
+
+    CREATE TABLE variables (
+        id         INTEGER PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        name       TEXT NOT NULL,
+        value      TEXT NULL,
+        is_secret  INTEGER NOT NULL DEFAULT 0,
+        UNIQUE (project_id, name)
+    );
+    """,
+)
+
+
+def data_dir() -> Path:
+    return Path(platformdirs.user_data_dir(APP_NAME, APP_AUTHOR))
+
+
+def default_database_path() -> Path:
+    return data_dir() / "browsertests.sqlite"
+
+
+def now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def connect(path: Path | str) -> sqlite3.Connection:
+    if str(path) != ":memory:":
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    migrate(connection)
+    return connection
+
+
+def migrate(connection: sqlite3.Connection) -> None:
+    version = connection.execute("PRAGMA user_version").fetchone()[0]
+    for index, script in enumerate(SCHEMA[version:], start=version + 1):
+        with connection:
+            connection.executescript(script)
+            connection.execute(f"PRAGMA user_version = {index}")
+
+
+class ProjectRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self._connection = connection
+
+    def all(self) -> list[Project]:
+        rows = self._connection.execute("SELECT * FROM projects ORDER BY name COLLATE NOCASE").fetchall()
+        return [self._hydrate(row) for row in rows]
+
+    def get(self, project_id: int) -> Project | None:
+        row = self._connection.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+        return self._hydrate(row) if row else None
+
+    def by_slug(self, slug: str) -> Project | None:
+        row = self._connection.execute("SELECT * FROM projects WHERE slug = ?", (slug,)).fetchone()
+        return self._hydrate(row) if row else None
+
+    def save(self, project: Project) -> Project:
+        attributes = json.dumps(list(project.test_id_attributes))
+        with self._connection:
+            if project.id is None:
+                created_at = now()
+                cursor = self._connection.execute(
+                    "INSERT INTO projects (slug, name, test_id_attributes, created_at) VALUES (?, ?, ?, ?)",
+                    (project.slug, project.name, attributes, created_at),
+                )
+                return Project(
+                    cursor.lastrowid, project.slug, project.name, project.test_id_attributes, created_at
+                )
+            self._connection.execute(
+                "UPDATE projects SET slug = ?, name = ?, test_id_attributes = ? WHERE id = ?",
+                (project.slug, project.name, attributes, project.id),
+            )
+        return project
+
+    def delete(self, project_id: int) -> None:
+        with self._connection:
+            self._connection.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+
+    @staticmethod
+    def _hydrate(row: sqlite3.Row) -> Project:
+        return Project(
+            id=row["id"],
+            slug=row["slug"],
+            name=row["name"],
+            test_id_attributes=tuple(json.loads(row["test_id_attributes"])),
+            created_at=row["created_at"],
+        )
+
+
+class EnvironmentRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self._connection = connection
+
+    def for_project(self, project_id: int) -> list[Environment]:
+        rows = self._connection.execute(
+            "SELECT * FROM environments WHERE project_id = ? ORDER BY name COLLATE NOCASE", (project_id,)
+        ).fetchall()
+        return [self._hydrate(row) for row in rows]
+
+    def get(self, environment_id: int) -> Environment | None:
+        row = self._connection.execute(
+            "SELECT * FROM environments WHERE id = ?", (environment_id,)
+        ).fetchone()
+        return self._hydrate(row) if row else None
+
+    def by_name(self, project_id: int, name: str) -> Environment | None:
+        row = self._connection.execute(
+            "SELECT * FROM environments WHERE project_id = ? AND name = ?", (project_id, name)
+        ).fetchone()
+        return self._hydrate(row) if row else None
+
+    def save(self, environment: Environment) -> Environment:
+        config = json.dumps(asdict(environment.config), sort_keys=True)
+        values = (
+            environment.project_id,
+            environment.name,
+            environment.base_url,
+            int(environment.allow_destructive),
+            config,
+        )
+        with self._connection:
+            if environment.id is None:
+                cursor = self._connection.execute(
+                    "INSERT INTO environments (project_id, name, base_url, allow_destructive, config) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    values,
+                )
+                return Environment(
+                    cursor.lastrowid,
+                    environment.project_id,
+                    environment.name,
+                    environment.base_url,
+                    environment.allow_destructive,
+                    environment.config,
+                )
+            self._connection.execute(
+                "UPDATE environments SET project_id = ?, name = ?, base_url = ?, allow_destructive = ?, "
+                "config = ? WHERE id = ?",
+                (*values, environment.id),
+            )
+        return environment
+
+    def delete(self, environment_id: int) -> None:
+        with self._connection:
+            self._connection.execute("DELETE FROM environments WHERE id = ?", (environment_id,))
+
+    @staticmethod
+    def default_allow_destructive(name: str) -> bool:
+        return name.strip().lower() == "staging"
+
+    @staticmethod
+    def _hydrate(row: sqlite3.Row) -> Environment:
+        return Environment(
+            id=row["id"],
+            project_id=row["project_id"],
+            name=row["name"],
+            base_url=row["base_url"],
+            allow_destructive=bool(row["allow_destructive"]),
+            config=EnvironmentConfig(**json.loads(row["config"])),
+        )
+
+
+class TestRepository:
+    __test__ = False
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self._connection = connection
+
+    def for_project(self, project_id: int, tags: tuple[str, ...] = ()) -> list[StoredTest]:
+        query = "SELECT * FROM tests WHERE project_id = ?"
+        parameters: list[object] = [project_id]
+        for tag in ir.normalize_tags(tags):
+            query += " AND id IN (SELECT test_id FROM test_tags WHERE tag = ?)"
+            parameters.append(tag)
+        query += " ORDER BY name COLLATE NOCASE"
+        rows = self._connection.execute(query, parameters).fetchall()
+        return [self._hydrate(row) for row in rows]
+
+    def get(self, test_id: int) -> StoredTest | None:
+        row = self._connection.execute("SELECT * FROM tests WHERE id = ?", (test_id,)).fetchone()
+        return self._hydrate(row) if row else None
+
+    def by_uuid(self, uuid: str) -> StoredTest | None:
+        row = self._connection.execute("SELECT * FROM tests WHERE uuid = ?", (uuid,)).fetchone()
+        return self._hydrate(row) if row else None
+
+    def save(self, project_id: int, test: Test) -> StoredTest:
+        test = replace(test, tags=ir.normalize_tags(test.tags))
+        document = ir.dumps(test)
+        updated_at = now()
+        with self._connection:
+            existing = self._connection.execute("SELECT id FROM tests WHERE uuid = ?", (test.id,)).fetchone()
+            if existing is None:
+                cursor = self._connection.execute(
+                    "INSERT INTO tests (project_id, uuid, name, destructive, ir, schema_version, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        project_id,
+                        test.id,
+                        test.name,
+                        int(test.destructive),
+                        document,
+                        ir.SCHEMA_VERSION,
+                        updated_at,
+                    ),
+                )
+                row_id = int(cursor.lastrowid or 0)
+            else:
+                row_id = existing["id"]
+                self._connection.execute(
+                    "UPDATE tests SET project_id = ?, name = ?, destructive = ?, ir = ?, schema_version = ?, "
+                    "updated_at = ? WHERE id = ?",
+                    (
+                        project_id,
+                        test.name,
+                        int(test.destructive),
+                        document,
+                        ir.SCHEMA_VERSION,
+                        updated_at,
+                        row_id,
+                    ),
+                )
+            self._connection.execute("DELETE FROM test_tags WHERE test_id = ?", (row_id,))
+            self._connection.executemany(
+                "INSERT INTO test_tags (test_id, tag) VALUES (?, ?)", [(row_id, tag) for tag in test.tags]
+            )
+        return StoredTest(row_id, project_id, test, updated_at)
+
+    def delete(self, test_id: int) -> None:
+        with self._connection:
+            self._connection.execute("DELETE FROM tests WHERE id = ?", (test_id,))
+
+    def tags(self, project_id: int) -> list[str]:
+        rows = self._connection.execute(
+            "SELECT DISTINCT tag FROM test_tags JOIN tests ON tests.id = test_tags.test_id "
+            "WHERE tests.project_id = ? ORDER BY tag",
+            (project_id,),
+        ).fetchall()
+        return [row["tag"] for row in rows]
+
+    @staticmethod
+    def _hydrate(row: sqlite3.Row) -> StoredTest:
+        return StoredTest(row["id"], row["project_id"], ir.loads(row["ir"]), row["updated_at"])
