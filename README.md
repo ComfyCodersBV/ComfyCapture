@@ -33,6 +33,19 @@ the pages in `tests/fixtures/site/`.
    drops ids that change between page loads.
 5. Continue recording replays the saved steps in a visible browser, then keeps recording.
 
+## Running
+
+```bash
+browsertests list --project shop
+browsertests run --project shop --env staging                 # all tests
+browsertests run --project shop --env staging --tag CINF-19   # tags AND together
+browsertests run --project shop --env staging --test "Guest checkout" --headed
+```
+
+Exit codes: `0` passed, `1` a test failed, `2` configuration error. `--jsonl` gives machine-readable
+output. Secrets come from `BROWSERTESTS_SECRET_<NAME>` or the OS keyring; `BROWSERTESTS_DATABASE`
+points at another database.
+
 ## Translations
 
 UI strings are English in the code and translated to Dutch in `src/browsertests/ui/i18n/`. After changing

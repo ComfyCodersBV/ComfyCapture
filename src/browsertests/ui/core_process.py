@@ -37,6 +37,10 @@ class CoreProcess(QObject):
         command = core_command(module, name)
         self._process.start(command[0], command[1:])
 
+    def start_module(self, module: str, arguments: list[str]) -> None:
+        command = core_command(module, *arguments)
+        self._process.start(command[0], command[1:])
+
     def start_command(self, command: list[str]) -> None:
         self._process.start(command[0], command[1:])
 

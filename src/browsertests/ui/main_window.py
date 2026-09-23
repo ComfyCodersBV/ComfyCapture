@@ -34,6 +34,7 @@ class MainWindow(QMainWindow):
         self.resize(1280, 800)
         self.setMinimumSize(960, 600)
         self._projects = db.ProjectRepository(connection)
+        self._tests = db.TestRepository(connection)
 
         self.project_list = QListWidget()
         self.project_list.setObjectName("ProjectList")
@@ -116,7 +117,7 @@ class MainWindow(QMainWindow):
         project = self._current_project()
         if project is None:
             return
-        dialog = ProjectDialog(project, self)
+        dialog = ProjectDialog(project, self, self._tests.for_project(project.id or 0))
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._save(dialog.result_project())
 

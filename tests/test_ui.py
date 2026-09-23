@@ -97,3 +97,30 @@ def test_dutch_translation_is_bundled_and_loads(application, monkeypatch) -> Non
         assert translator.translate("MainWindow", "Settings") == "Instellingen"
     finally:
         application.removeTranslator(translator)
+
+
+@pytest.mark.browser
+def test_run_dialog_shows_live_results(application, tmp_path, site_url) -> None:
+    import time
+
+    from browsertests.ui.run_view import RunDialog
+
+    connection = db.connect(tmp_path / "suite.sqlite")
+    project = db.ProjectRepository(connection).save(Project(None, "shop", "Shop"))
+    environment = db.EnvironmentRepository(connection).save(Environment(None, project.id, "local", site_url))
+    passing = db.TestRepository(connection).save(
+        project.id,
+        Test(id=ir.new_test_id(), name="home", steps=(Step("s1", Action.NAVIGATE, url="/index.html"),)),
+    )
+    dialog = RunDialog(project, environment, [passing], tmp_path / "suite.sqlite")
+
+    dialog._start()
+    deadline = time.monotonic() + 60
+    while dialog._process is not None and dialog._process._process.state().name != "NotRunning":
+        application.processEvents()
+        time.sleep(0.05)
+        assert time.monotonic() < deadline
+    application.processEvents()
+
+    assert "Passed" in dialog.table.item(0, 0).text()
+    assert db.RunRepository(connection).latest([passing.id])[passing.id].status.value == "passed"

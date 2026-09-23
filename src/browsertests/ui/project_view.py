@@ -3,7 +3,8 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import replace
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QCoreApplication, Qt, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -25,6 +26,7 @@ from browsertests.core.session import SessionPayload
 from browsertests.ui import formatting
 from browsertests.ui.dialogs import EnvironmentDialog, RecordSetupDialog, split_list
 from browsertests.ui.recording_view import RecordingDialog
+from browsertests.ui.run_view import STATUS_COLORS, RunDialog
 from browsertests.ui.test_editor import ReviewDialog
 from browsertests.ui.widgets import Card, IconButton, data_table, enable_with_selection, fit_rows, muted
 
@@ -45,6 +47,17 @@ def selected_key(widget: QTableWidget) -> int | None:
     return widget.item(rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
 
 
+def run_label(status: str) -> str:
+    labels = {
+        "passed": QCoreApplication.translate("RunStatus", "Passed"),
+        "flaky": QCoreApplication.translate("RunStatus", "Flaky"),
+        "failed": QCoreApplication.translate("RunStatus", "Failed"),
+        "error": QCoreApplication.translate("RunStatus", "Error"),
+        "skipped": QCoreApplication.translate("RunStatus", "Skipped"),
+    }
+    return "●  " + labels.get(status, status)
+
+
 class ProjectView(QStackedWidget):
     edit_project_requested = Signal()
     delete_project_requested = Signal()
@@ -54,6 +67,8 @@ class ProjectView(QStackedWidget):
         super().__init__(parent)
         self._environments = db.EnvironmentRepository(connection)
         self._tests = db.TestRepository(connection)
+        self._runs = db.RunRepository(connection)
+        self._database = db.database_file(connection) or db.default_database_path()
         self._project: Project | None = None
         self.addWidget(self._empty_page())
         self.addWidget(self._project_page())
@@ -127,7 +142,14 @@ class ProjectView(QStackedWidget):
         tests = Card(self.tr("Tests"), self.tr("Recorded tests. Double-click a test to review it."))
         self.test_table = data_table(
             self,
-            [self.tr("Test"), self.tr("Device"), self.tr("Tags"), self.tr("Steps"), self.tr("Updated")],
+            [
+                self.tr("Test"),
+                self.tr("Last run"),
+                self.tr("Device"),
+                self.tr("Tags"),
+                self.tr("Steps"),
+                self.tr("Updated"),
+            ],
             stretch_column=0,
         )
         self.test_table.setMinimumHeight(200)
@@ -137,10 +159,12 @@ class ProjectView(QStackedWidget):
             self.tr("Continue recording"), "continue", "ghost", self._continue_recording
         )
         delete_test = IconButton(self.tr("Delete"), "trash", "danger", self._delete_test)
-        for button in (review, continue_recording, delete_test):
+        run_selected = IconButton(self.tr("Run"), "continue", "ghost", self._run_selected)
+        for button in (run_selected, review, continue_recording, delete_test):
             tests.add_action(button)
+        tests.add_action(IconButton(self.tr("Run all"), "continue", "secondary", self._run_all))
         tests.add_action(IconButton(self.tr("Record new test"), "record", "primary", self._record_test))
-        enable_with_selection(self.test_table, review, continue_recording, delete_test)
+        enable_with_selection(self.test_table, run_selected, review, continue_recording, delete_test)
         self.tag_filter = QLineEdit()
         self.tag_filter.setPlaceholderText(self.tr("Filter by tags, e.g. CINF-19, checkout"))
         self.tag_filter.setClearButtonEnabled(True)
@@ -197,17 +221,25 @@ class ProjectView(QStackedWidget):
             self.test_table.setRowCount(0)
             return
         stored = self._tests.for_project(self._project.id, split_list(self.tag_filter.text()))
+        latest = self._runs.latest([item.id for item in stored])
         self.test_table.setRowCount(len(stored))
         for row, item in enumerate(stored):
             test = item.test
+            run = latest.get(item.id)
             cells = (
-                test.name,
+                test.name + self._role(test.id),
+                run_label(run.status.value) if run else self.tr("Never run"),
                 test.device.label,
                 "  ".join(formatting.tag_text(tag) for tag in test.tags),
                 str(len(test.steps)),
                 item.updated_at.replace("T", " ")[:16],
             )
             set_row(self.test_table, row, item.id, cells)
+            if run is not None:
+                self.test_table.item(row, 1).setForeground(
+                    QColor(STATUS_COLORS.get(run.status.value, "#6b6b7b"))
+                )
+                self.test_table.item(row, 1).setToolTip(run.message or run.started_at)
         self.test_table.resizeColumnsToContents()
         filtering = bool(self.tag_filter.text().strip())
         self.test_empty.setText(
@@ -216,6 +248,43 @@ class ProjectView(QStackedWidget):
             else self.tr("No tests yet. Record one with the button above.")
         )
         self.test_empty.setVisible(not stored)
+
+    def _role(self, test_id: str) -> str:
+        if self._project is None:
+            return ""
+        if test_id == self._project.setup_test_uuid:
+            return "  ·  " + self.tr("setup")
+        if test_id == self._project.login_test_uuid:
+            return "  ·  " + self.tr("login")
+        return ""
+
+    def _run(self, tests: list[StoredTest]) -> None:
+        if self._project is None or not tests:
+            return
+        environment = self._choose_environment()
+        if environment is None:
+            return
+        RunDialog(self._project, environment, tests, self._database, self).exec()
+        self._load_tests()
+
+    def _run_selected(self) -> None:
+        stored = self._selected_test()
+        if stored is not None:
+            self._run([stored])
+
+    def _run_all(self) -> None:
+        if self._project is None or self._project.id is None:
+            return
+        special = {self._project.setup_test_uuid, self._project.login_test_uuid}
+        tests = [
+            stored
+            for stored in self._tests.for_project(self._project.id, split_list(self.tag_filter.text()))
+            if stored.test.id not in special
+        ]
+        if not tests:
+            QMessageBox.information(self, self.tr("Run"), self.tr("There are no tests to run."))
+            return
+        self._run(tests)
 
     def _add_environment(self) -> None:
         if self._project is None or self._project.id is None:

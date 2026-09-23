@@ -10,7 +10,7 @@ import platformdirs
 
 CORE_FLAG = "--core"
 CORE_MODULES = frozenset(
-    {"browsertests.core.health", "browsertests.core.session", "browsertests.core.verify"}
+    {"browsertests.cli", "browsertests.core.health", "browsertests.core.session", "browsertests.core.verify"}
 )
 
 
@@ -29,12 +29,20 @@ def core_command(module: str, *arguments: str) -> list[str]:
     return [sys.executable, "-m", module, *arguments]
 
 
-def browser_install_command() -> list[str]:
+def driver_command(*arguments: str) -> list[str]:
     from playwright._impl._driver import compute_driver_executable
 
     driver = compute_driver_executable()
     executable = [str(part) for part in driver] if isinstance(driver, tuple) else [str(driver)]
-    return [*executable, "install", "chromium"]
+    return [*executable, *arguments]
+
+
+def browser_install_command() -> list[str]:
+    return driver_command("install", "chromium")
+
+
+def show_trace_command(trace: str) -> list[str]:
+    return driver_command("show-trace", trace)
 
 
 def restore_standard_streams() -> None:

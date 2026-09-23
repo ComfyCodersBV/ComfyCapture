@@ -79,3 +79,16 @@ updates and never need write access to the install directory.
 Own Qt stylesheet built from light and dark colour tokens (`ui/theme.py`), following the system scheme
 unless the user picks one in Settings. English source strings, Dutch translation in
 `ui/i18n/browsertests_nl.ts`; `packaging/update_translations.py` refreshes and compiles it.
+
+## D8 — Runs, setup and login (M2)
+
+- Exit codes: `0` everything passed (flaky counts as passed but is reported), `1` at least one test
+  failed, `2` configuration problem: unknown project/environment/test, missing variable or secret,
+  a failing login test, or a destructive test refused on a protected environment.
+- Setup and login are ordinary recorded tests, chosen per project. The setup test runs before every
+  test in the same page (cookie banner, locale switch). The login test runs once per run; its session
+  (`storage_state`) is kept in memory and handed to every test context, so it never lands on disk.
+  Saved storage-state files (§9, "login state") are not built; the login test covers that need.
+- Consent cookies are set per environment before every test.
+- Traces and a full-page screenshot (password fields masked) are kept for a final failure only, under
+  `<user data dir>/artifacts/<project>/`. Artifacts older than 14 days are pruned after every run.

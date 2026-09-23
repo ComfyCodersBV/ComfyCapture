@@ -100,6 +100,11 @@ def default_database_path() -> Path:
     return data_dir() / "browsertests.sqlite"
 
 
+def database_file(connection: sqlite3.Connection) -> Path | None:
+    row = connection.execute("PRAGMA database_list").fetchone()
+    return Path(row[2]) if row and row[2] else None
+
+
 def now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 

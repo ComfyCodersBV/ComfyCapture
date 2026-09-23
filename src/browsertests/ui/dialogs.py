@@ -22,6 +22,7 @@ from browsertests.core.models import (
     Environment,
     EnvironmentConfig,
     Project,
+    StoredTest,
 )
 from browsertests.ui.icons import icon
 from browsertests.ui.widgets import IconButton, field_label, hint
@@ -118,7 +119,12 @@ class FormDialog(QDialog):
 
 
 class ProjectDialog(FormDialog):
-    def __init__(self, project: Project | None = None, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        project: Project | None = None,
+        parent: QWidget | None = None,
+        tests: list[StoredTest] | None = None,
+    ) -> None:
         super().__init__(parent)
         self.set_heading(
             self.tr("Edit project") if project else self.tr("New project"),
@@ -150,7 +156,35 @@ class ProjectDialog(FormDialog):
                 "and roles are always used as well."
             ),
         )
+        self.setup_test = self._test_choice(tests or [], project.setup_test_uuid if project else None)
+        self.login_test = self._test_choice(tests or [], project.login_test_uuid if project else None)
+        if tests:
+            self.add_field(
+                self.tr("Setup test"),
+                self.setup_test,
+                required=False,
+                help_text=self.tr(
+                    "Runs before every test in the same browser, e.g. accepting the cookie banner."
+                ),
+            )
+            self.add_field(
+                self.tr("Login test"),
+                self.login_test,
+                required=False,
+                help_text=self.tr(
+                    "Runs once before a run; every test then starts logged in with its session."
+                ),
+            )
         self.finish_layout(self.tr("Save project"))
+
+    def _test_choice(self, tests: list[StoredTest], selected: str | None) -> QComboBox:
+        choice = QComboBox()
+        choice.addItem(self.tr("None"), None)
+        for stored in tests:
+            choice.addItem(stored.test.name, stored.test.id)
+        index = choice.findData(selected)
+        choice.setCurrentIndex(max(0, index))
+        return choice
 
     def validate(self) -> tuple[str, QWidget] | None:
         if not self.name.text().strip():
@@ -167,6 +201,8 @@ class ProjectDialog(FormDialog):
             name=self.name.text().strip(),
             test_id_attributes=attributes,
             created_at=self._project.created_at if self._project else "",
+            setup_test_uuid=self.setup_test.currentData(),
+            login_test_uuid=self.login_test.currentData(),
         )
 
 
@@ -203,6 +239,10 @@ class EnvironmentDialog(FormDialog):
         self.timezone.setPlaceholderText("Europe/Amsterdam")
         self.ignore_https_errors = QCheckBox(self.tr("Ignore HTTPS certificate errors"))
         self.ignore_https_errors.setChecked(config.ignore_https_errors)
+        self.cookies = QLineEdit("; ".join(config.cookies))
+        self.cookies.setPlaceholderText("CookieConsent=true; locale=nl")
+        self.http_credentials = QLineEdit(config.http_credentials or "")
+        self.http_credentials.setPlaceholderText("staging_basic_auth")
         self.add_field(self.tr("Name"), self.name, required=True)
         self.add_field(
             self.tr("Base URL"),
@@ -215,6 +255,21 @@ class EnvironmentDialog(FormDialog):
         self.layout_.addSpacing(8)
         self.add_field(self.tr("Locale"), self.locale, required=False)
         self.add_field(self.tr("Timezone"), self.timezone, required=False)
+        self.add_field(
+            self.tr("Cookies"),
+            self.cookies,
+            required=False,
+            help_text=self.tr(
+                "Set before every test, e.g. a consent cookie so the cookie banner never appears. "
+                "Separate cookies with a semicolon."
+            ),
+        )
+        self.add_field(
+            self.tr("Basic auth secret"),
+            self.http_credentials,
+            required=False,
+            help_text=self.tr("Name of a secret holding user:password, for HTTP basic auth on staging."),
+        )
         self.add_widget(self.ignore_https_errors)
         self.finish_layout(self.tr("Save environment"))
 
@@ -226,7 +281,6 @@ class EnvironmentDialog(FormDialog):
         return None
 
     def result_environment(self) -> Environment:
-        existing = self._environment.config if self._environment else EnvironmentConfig()
         return Environment(
             id=self._environment.id if self._environment else None,
             project_id=self._project_id,
@@ -237,7 +291,8 @@ class EnvironmentDialog(FormDialog):
                 locale=self.locale.text().strip() or None,
                 timezone=self.timezone.text().strip() or None,
                 ignore_https_errors=self.ignore_https_errors.isChecked(),
-                http_credentials=existing.http_credentials,
+                http_credentials=self.http_credentials.text().strip() or None,
+                cookies=tuple(part.strip() for part in self.cookies.text().split(";") if "=" in part),
             ),
         )
 
