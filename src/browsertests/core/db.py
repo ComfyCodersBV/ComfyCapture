@@ -9,7 +9,15 @@ from pathlib import Path
 import platformdirs
 
 from browsertests.core import ir
-from browsertests.core.models import Environment, EnvironmentConfig, Project, StoredTest, Test
+from browsertests.core.models import (
+    Environment,
+    EnvironmentConfig,
+    Project,
+    RunRecord,
+    RunStatus,
+    StoredTest,
+    Test,
+)
 
 APP_NAME = "BrowsertestSuite"
 APP_AUTHOR = "ComfyCoders"
@@ -76,6 +84,11 @@ SCHEMA: tuple[str, ...] = (
         UNIQUE (project_id, name)
     );
     """,
+    """
+    ALTER TABLE projects ADD COLUMN setup_test_uuid TEXT NULL;
+    ALTER TABLE projects ADD COLUMN login_test_uuid TEXT NULL;
+    CREATE INDEX idx_runs_test ON runs(test_id, started_at);
+    """,
 )
 
 
@@ -109,6 +122,15 @@ def migrate(connection: sqlite3.Connection) -> None:
             connection.execute(f"PRAGMA user_version = {index}")
 
 
+def config_from_json(text: str) -> EnvironmentConfig:
+    document = json.loads(text)
+    known = {
+        name: value for name, value in document.items() if name in EnvironmentConfig.__dataclass_fields__
+    }
+    known["cookies"] = tuple(known.get("cookies") or ())
+    return EnvironmentConfig(**known)
+
+
 class ProjectRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._connection = connection
@@ -127,19 +149,20 @@ class ProjectRepository:
 
     def save(self, project: Project) -> Project:
         attributes = json.dumps(list(project.test_id_attributes))
+        values = (project.slug, project.name, attributes, project.setup_test_uuid, project.login_test_uuid)
         with self._connection:
             if project.id is None:
                 created_at = now()
                 cursor = self._connection.execute(
-                    "INSERT INTO projects (slug, name, test_id_attributes, created_at) VALUES (?, ?, ?, ?)",
-                    (project.slug, project.name, attributes, created_at),
+                    "INSERT INTO projects (slug, name, test_id_attributes, setup_test_uuid, login_test_uuid, "
+                    "created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    (*values, created_at),
                 )
-                return Project(
-                    cursor.lastrowid, project.slug, project.name, project.test_id_attributes, created_at
-                )
+                return replace(project, id=cursor.lastrowid, created_at=created_at)
             self._connection.execute(
-                "UPDATE projects SET slug = ?, name = ?, test_id_attributes = ? WHERE id = ?",
-                (project.slug, project.name, attributes, project.id),
+                "UPDATE projects SET slug = ?, name = ?, test_id_attributes = ?, setup_test_uuid = ?, "
+                "login_test_uuid = ? WHERE id = ?",
+                (*values, project.id),
             )
         return project
 
@@ -155,6 +178,8 @@ class ProjectRepository:
             name=row["name"],
             test_id_attributes=tuple(json.loads(row["test_id_attributes"])),
             created_at=row["created_at"],
+            setup_test_uuid=row["setup_test_uuid"],
+            login_test_uuid=row["login_test_uuid"],
         )
 
 
@@ -227,7 +252,7 @@ class EnvironmentRepository:
             name=row["name"],
             base_url=row["base_url"],
             allow_destructive=bool(row["allow_destructive"]),
-            config=EnvironmentConfig(**json.loads(row["config"])),
+            config=config_from_json(row["config"]),
         )
 
 
@@ -312,3 +337,71 @@ class TestRepository:
     @staticmethod
     def _hydrate(row: sqlite3.Row) -> StoredTest:
         return StoredTest(row["id"], row["project_id"], ir.loads(row["ir"]), row["updated_at"])
+
+
+class RunRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self._connection = connection
+
+    def add(self, run: RunRecord) -> RunRecord:
+        with self._connection:
+            cursor = self._connection.execute(
+                "INSERT INTO runs (test_id, environment_id, status, started_at, duration_ms, failed_step_id, "
+                "message, artifact_path, playwright_version, browser_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    run.test_id,
+                    run.environment_id,
+                    run.status.value,
+                    run.started_at,
+                    run.duration_ms,
+                    run.failed_step_id,
+                    run.message,
+                    run.artifact_path,
+                    run.playwright_version,
+                    run.browser_version,
+                ),
+            )
+        return replace(run, id=cursor.lastrowid)
+
+    def for_test(self, test_id: int, limit: int = 20) -> list[RunRecord]:
+        rows = self._connection.execute(
+            "SELECT * FROM runs WHERE test_id = ? ORDER BY started_at DESC, id DESC LIMIT ?", (test_id, limit)
+        ).fetchall()
+        return [self._hydrate(row) for row in rows]
+
+    def latest(self, test_ids: list[int]) -> dict[int, RunRecord]:
+        if not test_ids:
+            return {}
+        placeholders = ", ".join("?" for _ in test_ids)
+        rows = self._connection.execute(
+            f"SELECT * FROM runs WHERE id IN (SELECT MAX(id) FROM runs WHERE test_id IN ({placeholders}) "
+            "GROUP BY test_id)",
+            test_ids,
+        ).fetchall()
+        return {row["test_id"]: self._hydrate(row) for row in rows}
+
+    def with_artifacts_before(self, started_before: str) -> list[RunRecord]:
+        rows = self._connection.execute(
+            "SELECT * FROM runs WHERE artifact_path IS NOT NULL AND started_at < ?", (started_before,)
+        ).fetchall()
+        return [self._hydrate(row) for row in rows]
+
+    def clear_artifact(self, run_id: int) -> None:
+        with self._connection:
+            self._connection.execute("UPDATE runs SET artifact_path = NULL WHERE id = ?", (run_id,))
+
+    @staticmethod
+    def _hydrate(row: sqlite3.Row) -> RunRecord:
+        return RunRecord(
+            id=row["id"],
+            test_id=row["test_id"],
+            environment_id=row["environment_id"],
+            status=RunStatus(row["status"]),
+            started_at=row["started_at"],
+            duration_ms=row["duration_ms"],
+            playwright_version=row["playwright_version"],
+            browser_version=row["browser_version"],
+            failed_step_id=row["failed_step_id"],
+            message=row["message"],
+            artifact_path=row["artifact_path"],
+        )

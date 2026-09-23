@@ -126,6 +126,8 @@ class Project:
     name: str
     test_id_attributes: tuple[str, ...] = DEFAULT_TEST_ID_ATTRIBUTES
     created_at: str = ""
+    setup_test_uuid: str | None = None
+    login_test_uuid: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,6 +136,7 @@ class EnvironmentConfig:
     timezone: str | None = None
     ignore_https_errors: bool = False
     http_credentials: str | None = None
+    cookies: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,3 +155,26 @@ class StoredTest:
     project_id: int
     test: Test
     updated_at: str
+
+
+class RunStatus(StrEnum):
+    PASSED = "passed"
+    FAILED = "failed"
+    FLAKY = "flaky"
+    ERROR = "error"
+    SKIPPED = "skipped"
+
+
+@dataclass(frozen=True, slots=True)
+class RunRecord:
+    id: int | None
+    test_id: int
+    environment_id: int
+    status: RunStatus
+    started_at: str
+    duration_ms: int
+    playwright_version: str
+    browser_version: str
+    failed_step_id: str | None = None
+    message: str | None = None
+    artifact_path: str | None = None

@@ -7,7 +7,12 @@
 <button id="add" data-testid="add-to-cart" onclick="document.getElementById('cart').textContent = 'Cart: 1'">Add to cart</button>
 <button class="generated">Random id</button>
 <p id="cart">Cart: 0</p>
+<button id="login" onclick="document.cookie = 'session=ok; path=/'; location.reload()">Log in</button>
+<p id="session"></p>
+<p id="consent"></p>
 <script>
+document.getElementById('session').textContent = document.cookie.includes('session=ok') ? 'Signed in' : 'Signed out';
+document.getElementById('consent').textContent = document.cookie.includes('consent=yes') ? 'Consented' : 'Banner';
 document.querySelector('.generated').id = 'btn-' + Math.random().toString(36).slice(2, 10);
 </script>
 </body>
