@@ -25,7 +25,7 @@ def main() -> int:
     apply_theme(application)
     follow_system(application)
     window = MainWindow(db.connect(db.default_database_path()))
-    window.show_restored()
+    window.show_maximised()
     return application.exec()
 
 
