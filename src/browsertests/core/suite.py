@@ -176,6 +176,7 @@ class SuiteRunner:
         self._emit({"type": "login_started", "name": login.test.name})
         context = self._context(playwright, browser, login, None)
         page = context.new_page()
+        runner.accept_dialogs(page)
         outcomes = runner.replay(
             page,
             login.test.steps,
@@ -247,6 +248,7 @@ class SuiteRunner:
         context = self._context(playwright, browser, stored, storage)
         context.tracing.start(screenshots=True, snapshots=True, sources=False)
         page = context.new_page()
+        runner.accept_dialogs(page)
         base_url = self._plan.environment.base_url
 
         def on_step(outcome: runner.StepOutcome) -> None:

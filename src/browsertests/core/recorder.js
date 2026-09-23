@@ -536,6 +536,67 @@
     listen('change', onChange);
     listen('keydown', onKeyDown);
     listen('mouseover', onMouseOver);
+
+    let pendingCounter = 0;
+    let lastSelectRequest = { element: null, time: 0 };
+    window.__btPending = window.__btPending || {};
+
+    const openSelect = (event) => {
+        if (!config.viewer || mode !== 'record') {
+            return;
+        }
+        const element = eventElement(event);
+        if (!(element instanceof HTMLSelectElement) || element.disabled) {
+            return;
+        }
+        event.preventDefault();
+        if (lastSelectRequest.element === element && Date.now() - lastSelectRequest.time < 400) {
+            return;
+        }
+        lastSelectRequest = { element, time: Date.now() };
+        pendingCounter += 1;
+        const id = `${pageToken}-select-${pendingCounter}`;
+        window.__btPending[id] = element;
+        const box = element.getBoundingClientRect();
+        if (typeof window.__btSelect === 'function') {
+            window.__btSelect({
+                id,
+                multiple: element.multiple,
+                x: box.left,
+                y: box.bottom,
+                options: Array.from(element.options).map((option) => ({
+                    value: option.value,
+                    label: normalize(option.label || option.textContent),
+                    selected: option.selected,
+                    disabled: option.disabled,
+                })),
+            });
+        }
+    };
+    listen('mousedown', openSelect);
+    listen('touchend', openSelect);
+
+    let lastCursor = '';
+    const cursorOf = (element) => {
+        if (!(element instanceof Element)) {
+            return 'default';
+        }
+        const cursor = getComputedStyle(element).cursor;
+        if (cursor === 'auto') {
+            return isTextInput(element) ? 'text' : 'default';
+        }
+        return cursor;
+    };
+    window.addEventListener('mousemove', (event) => {
+        if (!config.viewer || typeof window.__btCursor !== 'function') {
+            return;
+        }
+        const cursor = cursorOf(eventElement(event));
+        if (cursor !== lastCursor) {
+            lastCursor = cursor;
+            window.__btCursor(cursor);
+        }
+    }, { capture: true, passive: true });
     for (const type of ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'auxclick']) {
         listen(type, blockInPickMode);
     }

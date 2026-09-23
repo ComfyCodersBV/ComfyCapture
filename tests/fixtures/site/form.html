@@ -12,5 +12,8 @@
   <input wire:model.live="search" placeholder="Search products">
   <button type="submit">Place order</button>
 </form>
+<button id="danger" onclick="document.getElementById('answer').textContent = confirm('Sure?') ? 'yes' : 'no'">Delete account</button>
+<p id="answer"></p>
+<input type="file" id="upload">
 </body>
 </html>

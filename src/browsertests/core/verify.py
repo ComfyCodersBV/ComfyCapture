@@ -135,8 +135,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             context = browser.new_context(
                 **runner.context_options(playwright, payload.device, payload.environment)
             )
+            page = context.new_page()
+            runner.accept_dialogs(page)
             result = verify(
-                context.new_page(),
+                page,
                 payload.steps,
                 payload.base_url,
                 resolver,

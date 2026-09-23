@@ -230,6 +230,23 @@ class DeviceViewer(QWidget):
             }
         )
 
+    def set_page_cursor(self, cursor: str) -> None:
+        if self._mobile:
+            return
+        shapes = {
+            "pointer": Qt.CursorShape.PointingHandCursor,
+            "text": Qt.CursorShape.IBeamCursor,
+            "not-allowed": Qt.CursorShape.ForbiddenCursor,
+            "move": Qt.CursorShape.SizeAllCursor,
+            "grab": Qt.CursorShape.OpenHandCursor,
+            "grabbing": Qt.CursorShape.ClosedHandCursor,
+            "wait": Qt.CursorShape.WaitCursor,
+            "progress": Qt.CursorShape.BusyCursor,
+            "crosshair": Qt.CursorShape.CrossCursor,
+            "help": Qt.CursorShape.WhatsThisCursor,
+        }
+        self.setCursor(shapes.get(cursor, Qt.CursorShape.ArrowCursor))
+
     def set_zoom(self, zoom: float) -> None:
         self.zoom = zoom
         QSettings().setValue(ZOOM_KEY, zoom)

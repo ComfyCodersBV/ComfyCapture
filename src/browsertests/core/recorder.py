@@ -30,14 +30,20 @@ class Recorder:
         on_change: Callable[[tuple[Step, ...]], None] | None = None,
         toolbar: bool = True,
         selector_kinds: Iterable[SelectorKind] | None = None,
+        viewer: bool = False,
+        on_select: Callable[[Frame, dict[str, Any]], None] | None = None,
+        on_cursor: Callable[[str], None] | None = None,
     ) -> None:
+        self._on_select = on_select
+        self._on_cursor = on_cursor
+        self._upload_paths: list[str] | None = None
         self._context = context
         self._builder = StepBuilder(
             base_url, test_id_attributes, mobile=mobile, steps=steps, selector_kinds=selector_kinds
         )
         self._on_change = on_change
         self._pages: list[Page] = []
-        self._config = {"testIdAttributes": list(test_id_attributes), "toolbar": toolbar}
+        self._config = {"testIdAttributes": list(test_id_attributes), "toolbar": toolbar, "viewer": viewer}
         self.recording = False
         self.mode = "record"
         self.viewport: tuple[int, int] | None = None
@@ -53,6 +59,8 @@ class Recorder:
         self._context.expose_binding("__btEmit", self._on_emit)
         self._context.expose_binding("__btState", lambda source: {"mode": self.mode})
         self._context.expose_binding("__btSetMode", self._on_set_mode)
+        self._context.expose_binding("__btSelect", self._on_select_request)
+        self._context.expose_binding("__btCursor", self._on_cursor_change)
         self._context.on("page", self.track)
         for page in self._context.pages:
             self.track(page)
@@ -77,9 +85,28 @@ class Recorder:
             self.viewport = (int(viewport.get("width", 0)), int(viewport.get("height", 0)))
         if not self.recording:
             return
+        if payload.get("type") == "setInputFiles" and self._upload_paths:
+            payload = {**payload, "value": ",".join(self._upload_paths)}
+            self._upload_paths = None
         event = RecordedEvent.from_payload(payload, page_index)
         if self._builder.add(event):
             self._changed()
+
+    def expect_upload(self, paths: list[str]) -> None:
+        self._upload_paths = paths
+
+    def note_last_step(self, note: str) -> None:
+        if self._builder.annotate_last(note):
+            self._changed()
+
+    def _on_select_request(self, source: dict[str, Any], request: dict[str, Any]) -> None:
+        frame = source.get("frame")
+        if self._on_select is not None and frame is not None and isinstance(request, dict):
+            self._on_select(frame, request)
+
+    def _on_cursor_change(self, source: dict[str, Any], cursor: str) -> None:
+        if self._on_cursor is not None:
+            self._on_cursor(str(cursor))
 
     def request_navigation(self, url: str) -> None:
         if self.recording and self._builder.navigation(url, time.time() * 1000, requested=True):

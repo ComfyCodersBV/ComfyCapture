@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from browsertests.core import ir, runner
+from browsertests.core.interactions import Interactions
 from browsertests.core.models import Device, EnvironmentConfig, SelectorKind, Step
 from browsertests.core.recorder import Recorder
 from browsertests.core.screencast import InputBridge, Screencast
@@ -98,7 +99,11 @@ def outcome_to_dict(outcome: runner.StepOutcome) -> dict[str, Any]:
     }
 
 
-def watch_stdin(commands: queue.Queue[dict[str, Any]], stop: threading.Event) -> None:
+def watch_stdin(
+    commands: queue.Queue[dict[str, Any]],
+    stop: threading.Event,
+    replies: queue.Queue[dict[str, Any]] | None = None,
+) -> None:
     for line in sys.stdin:
         text = line.strip()
         if text == "stop":
@@ -107,8 +112,12 @@ def watch_stdin(commands: queue.Queue[dict[str, Any]], stop: threading.Event) ->
             command = json.loads(text)
         except json.JSONDecodeError:
             continue
-        if isinstance(command, dict):
-            commands.put(command)
+        if not isinstance(command, dict):
+            continue
+        if command.get("type") == "dialog_reply" and replies is not None:
+            replies.put(command)
+            continue
+        commands.put(command)
     stop.set()
 
 
@@ -117,15 +126,18 @@ def drain(
     bridge: InputBridge | None,
     recorder: Recorder,
     screencast: Screencast | None = None,
+    interactions: Interactions | None = None,
 ) -> None:
     while True:
         try:
             command = commands.get_nowait()
         except queue.Empty:
             return
-        if bridge is None:
-            continue
         try:
+            if interactions is not None and interactions.handle(command):
+                continue
+            if bridge is None:
+                continue
             if command.get("type") == "screencast_size" and screencast is not None:
                 screencast.resize(int(command.get("width", 0)), int(command.get("height", 0)))
                 continue
@@ -137,7 +149,10 @@ def drain(
 
 
 def record(
-    payload: SessionPayload, stop: threading.Event, commands: queue.Queue[dict[str, Any]] | None = None
+    payload: SessionPayload,
+    stop: threading.Event,
+    commands: queue.Queue[dict[str, Any]] | None = None,
+    replies: queue.Queue[dict[str, Any]] | None = None,
 ) -> tuple[Step, ...]:
     from playwright.sync_api import sync_playwright
 
@@ -163,12 +178,31 @@ def record(
             mobile=payload.device.is_mobile,
             steps=payload.steps,
             selector_kinds=payload.selector_kinds,
+            viewer=viewer,
+            on_select=lambda frame, request: interactions.on_select(frame, request),
+            on_cursor=lambda cursor: emit({"type": "cursor", "cursor": cursor}),
             on_change=lambda steps: emit(
                 {"type": "steps", "steps": [ir.step_to_dict(step) for step in steps]}
             ),
         )
+        interactions = Interactions(recorder, emit, replies, stop)
         recorder.install()
         page = context.new_page()
+        interactions.watch(page, viewer)
+        context.on(
+            "page",
+            lambda opened: (
+                emit(
+                    {
+                        "type": "notice",
+                        "message": "The site opened a new tab or popup. Actions there are not recorded yet.",
+                    }
+                )
+                if opened != page
+                else None
+            ),
+        )
+
         lock = None
         bridge = None
         screencast = None
@@ -229,7 +263,7 @@ def record(
                 open_pages[0].wait_for_timeout(VIEWER_POLL_MS if viewer else POLL_MS)
             except Exception:
                 continue
-            drain(commands, bridge, recorder, screencast)
+            drain(commands, bridge, recorder, screencast, interactions)
             if lock is not None:
                 lock.enforce()
 
@@ -251,9 +285,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     payload = SessionPayload.from_dict(json.loads(Path(arguments[0]).read_text(encoding="utf-8")))
     stop = threading.Event()
     commands: queue.Queue[dict[str, Any]] = queue.Queue()
-    threading.Thread(target=watch_stdin, args=(commands, stop), daemon=True).start()
+    replies: queue.Queue[dict[str, Any]] = queue.Queue()
+    threading.Thread(target=watch_stdin, args=(commands, stop, replies), daemon=True).start()
     try:
-        steps = record(payload, stop, commands)
+        steps = record(payload, stop, commands, replies)
     except Exception as error:
         emit({"type": "error", "message": runner.first_line(str(error)), "fatal": True})
         return 1

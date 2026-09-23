@@ -3,11 +3,16 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtCore import QCoreApplication, Qt, QTimer
-from PySide6.QtGui import QShowEvent
+from PySide6.QtGui import QCursor, QShowEvent
 from PySide6.QtWidgets import (
     QDialog,
+    QFileDialog,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMenu,
     QMessageBox,
     QTableWidget,
     QTableWidgetItem,
@@ -55,6 +60,24 @@ def steps_table(parent: QWidget) -> QTableWidget:
     return data_table(parent, headers, stretch_column=3)
 
 
+def choose_many(parent: QWidget, options: list[dict[str, Any]]) -> list[str]:
+    dialog = QDialog(parent)
+    dialog.setWindowTitle(QCoreApplication.translate("Select", "Choose options"))
+    options_list = QListWidget(dialog)
+    options_list.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+    for option in options:
+        item = QListWidgetItem(str(option.get("label") or option.get("value")), options_list)
+        item.setData(Qt.ItemDataRole.UserRole, option.get("value"))
+        item.setSelected(bool(option.get("selected")))
+    confirm = IconButton(QCoreApplication.translate("Select", "Apply"), "check", "primary", dialog.accept)
+    layout = QVBoxLayout(dialog)
+    layout.addWidget(options_list)
+    layout.addWidget(confirm)
+    if dialog.exec() != QDialog.DialogCode.Accepted:
+        return []
+    return [str(item.data(Qt.ItemDataRole.UserRole)) for item in options_list.selectedItems()]
+
+
 class RecordingDialog(QDialog):
     def __init__(self, payload: dict[str, Any], parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -78,6 +101,10 @@ class RecordingDialog(QDialog):
                 "assertions. Close the browser or press Stop when you are done."
             )
         )
+        self.notice = QLabel()
+        self.notice.setObjectName("Optional")
+        self.notice.setWordWrap(True)
+        self.notice.hide()
         self.table = steps_table(self)
         card = Card(self.tr("Recorded steps"))
         card.body.addWidget(self.table)
@@ -95,6 +122,7 @@ class RecordingDialog(QDialog):
         column.setSpacing(12)
         column.addLayout(heading)
         column.addWidget(self.hint)
+        column.addWidget(self.notice)
         column.addWidget(card, 1)
         column.addLayout(buttons)
 
@@ -181,6 +209,22 @@ class RecordingDialog(QDialog):
         if kind == "location" and self.device is not None:
             self.device.bar.set_location(str(message.get("url", "")))
             return
+        if kind == "select":
+            self._answer_select(message)
+            return
+        if kind == "dialog":
+            self._answer_dialog(message)
+            return
+        if kind == "filechooser":
+            self._answer_files(message)
+            return
+        if kind == "cursor" and self.device is not None:
+            self.device.viewer.set_page_cursor(str(message.get("cursor", "default")))
+            return
+        if kind == "notice":
+            self.notice.setText(str(message.get("message", "")))
+            self.notice.show()
+            return
         if kind == "viewport":
             self.viewport = (int(message.get("width", 0)), int(message.get("height", 0)))
             return
@@ -188,6 +232,45 @@ class RecordingDialog(QDialog):
             self._error = str(message.get("message", ""))
             if not message.get("fatal"):
                 QMessageBox.warning(self, self.windowTitle(), self._error)
+
+    def _answer_select(self, request: dict[str, Any]) -> None:
+        options = [option for option in request.get("options", []) if not option.get("disabled")]
+        if request.get("multiple"):
+            chosen = choose_many(self, options)
+        else:
+            menu = QMenu(self)
+            for option in options:
+                action = menu.addAction(str(option.get("label") or option.get("value")))
+                action.setCheckable(True)
+                action.setChecked(bool(option.get("selected")))
+                action.setData(option.get("value"))
+            picked = menu.exec(QCursor.pos())
+            chosen = [str(picked.data())] if picked is not None else []
+        self._send({"type": "select_choice", "id": request.get("id"), "values": chosen})
+
+    def _answer_dialog(self, request: dict[str, Any]) -> None:
+        kind = request.get("kind")
+        message = str(request.get("message", ""))
+        title = self.tr("The page asks")
+        text = None
+        if kind == "alert":
+            QMessageBox.information(self, title, message)
+            accept = True
+        elif kind == "prompt":
+            text, accept = QInputDialog.getText(self, title, message, text=str(request.get("default") or ""))
+        else:
+            answer = QMessageBox.question(self, title, message or self.tr("Leave this page?"))
+            accept = answer == QMessageBox.StandardButton.Yes
+        self._send({"type": "dialog_reply", "id": request.get("id"), "accept": accept, "text": text})
+
+    def _answer_files(self, request: dict[str, Any]) -> None:
+        title = self.tr("Choose the file to upload")
+        if request.get("multiple"):
+            paths, _ = QFileDialog.getOpenFileNames(self, title)
+        else:
+            path, _ = QFileDialog.getOpenFileName(self, title)
+            paths = [path] if path else []
+        self._send({"type": "files", "id": request.get("id"), "paths": paths})
 
     def _on_finished(self, exit_code: int) -> None:
         if self._closing:

@@ -578,84 +578,99 @@
 <context>
     <name>RecordingDialog</name>
     <message>
-        <location filename="../recording_view.py" line="61"/>
-        <location filename="../recording_view.py" line="71"/>
+        <location filename="../recording_view.py" line="84"/>
+        <location filename="../recording_view.py" line="94"/>
         <source>Recording</source>
         <translation>Opname</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="73"/>
-        <location filename="../recording_view.py" line="226"/>
+        <location filename="../recording_view.py" line="96"/>
+        <location filename="../recording_view.py" line="309"/>
         <source>Starting browser…</source>
         <translation>Browser starten…</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="77"/>
+        <location filename="../recording_view.py" line="100"/>
         <source>Click through the site in the browser window. Use the toolbar at the bottom of the page to add assertions. Close the browser or press Stop when you are done.</source>
         <translation>Klik door de site in het browservenster. Voeg controles toe met de werkbalk onderaan de pagina. Sluit de browser of klik op Stoppen als je klaar bent.</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="82"/>
+        <location filename="../recording_view.py" line="109"/>
         <source>Recorded steps</source>
         <translation>Opgenomen stappen</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="84"/>
+        <location filename="../recording_view.py" line="111"/>
         <source>Stop recording</source>
         <translation>Opname stoppen</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="105"/>
+        <location filename="../recording_view.py" line="133"/>
         <source>Use the device on the left like a phone or a browser. The toolbar at the bottom of the page adds assertions. Press Stop when you are done.</source>
         <translation>Gebruik het toestel links zoals een telefoon of browser. De werkbalk onderaan de pagina voegt controles toe. Klik op Stoppen als je klaar bent.</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="148"/>
+        <location filename="../recording_view.py" line="176"/>
         <source>Stopping…</source>
         <translation>Stoppen…</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="155"/>
+        <location filename="../recording_view.py" line="183"/>
         <source>Replaying the saved steps…</source>
         <translation>Opgeslagen stappen afspelen…</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="156"/>
+        <location filename="../recording_view.py" line="184"/>
         <source>Recording.</source>
         <translation>Bezig met opnemen.</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="162"/>
+        <location filename="../recording_view.py" line="190"/>
         <source>passed</source>
         <translation>geslaagd</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="162"/>
+        <location filename="../recording_view.py" line="190"/>
         <source>failed</source>
         <translation>mislukt</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="164"/>
+        <location filename="../recording_view.py" line="192"/>
         <source>Replaying: step {step} {state}</source>
         <translation>Afspelen: stap {step} {state}</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="198"/>
+        <location filename="../recording_view.py" line="254"/>
+        <source>The page asks</source>
+        <translation>De pagina vraagt</translation>
+    </message>
+    <message>
+        <location filename="../recording_view.py" line="262"/>
+        <source>Leave this page?</source>
+        <translation>Deze pagina verlaten?</translation>
+    </message>
+    <message>
+        <location filename="../recording_view.py" line="267"/>
+        <source>Choose the file to upload</source>
+        <translation>Kies het bestand om te uploaden</translation>
+    </message>
+    <message>
+        <location filename="../recording_view.py" line="281"/>
         <source>The recording stopped unexpectedly.</source>
         <translation>De opname is onverwacht gestopt.</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="208"/>
+        <location filename="../recording_view.py" line="291"/>
         <source>The Playwright browser is not installed yet. Download it now (about 150 MB)?</source>
         <translation>De Playwright-browser is nog niet geïnstalleerd. Nu downloaden (ongeveer 150 MB)?</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="212"/>
+        <location filename="../recording_view.py" line="295"/>
         <source>Downloading the browser…</source>
         <translation>Browser downloaden…</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="221"/>
+        <location filename="../recording_view.py" line="304"/>
         <source>Installing the browser failed.</source>
         <translation>Het installeren van de browser is mislukt.</translation>
     </message>
@@ -962,6 +977,19 @@
     </message>
 </context>
 <context>
+    <name>Select</name>
+    <message>
+        <location filename="../recording_view.py" line="65"/>
+        <source>Choose options</source>
+        <translation>Opties kiezen</translation>
+    </message>
+    <message>
+        <location filename="../recording_view.py" line="72"/>
+        <source>Apply</source>
+        <translation>Toepassen</translation>
+    </message>
+</context>
+<context>
     <name>SettingsDialog</name>
     <message>
         <location filename="../settings_dialog.py" line="14"/>
@@ -1117,22 +1145,22 @@
 <context>
     <name>StepsTable</name>
     <message>
-        <location filename="../recording_view.py" line="50"/>
+        <location filename="../recording_view.py" line="55"/>
         <source>Action</source>
         <translation>Actie</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="51"/>
+        <location filename="../recording_view.py" line="56"/>
         <source>Target</source>
         <translation>Doel</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="52"/>
+        <location filename="../recording_view.py" line="57"/>
         <source>Value</source>
         <translation>Waarde</translation>
     </message>
     <message>
-        <location filename="../recording_view.py" line="53"/>
+        <location filename="../recording_view.py" line="58"/>
         <source>Needs attention</source>
         <translation>Aandacht nodig</translation>
     </message>
@@ -1307,42 +1335,42 @@
 <context>
     <name>ViewerBar</name>
     <message>
-        <location filename="../device_viewer.py" line="278"/>
+        <location filename="../device_viewer.py" line="295"/>
         <source>Back</source>
         <translation>Terug</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="279"/>
+        <location filename="../device_viewer.py" line="296"/>
         <source>Forward</source>
         <translation>Vooruit</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="280"/>
+        <location filename="../device_viewer.py" line="297"/>
         <source>Reload</source>
         <translation>Vernieuwen</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="286"/>
+        <location filename="../device_viewer.py" line="303"/>
         <source>Type a URL or a path and press Enter</source>
         <translation>Typ een URL of pad en druk op Enter</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="289"/>
+        <location filename="../device_viewer.py" line="306"/>
         <source>Invert scrolling</source>
         <translation>Scrollrichting omdraaien</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="292"/>
+        <location filename="../device_viewer.py" line="309"/>
         <source>Scroll like on a touch screen: the page follows the direction of your fingers.</source>
         <translation>Scrollen zoals op een touchscreen: de pagina volgt de richting van je vingers.</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="297"/>
+        <location filename="../device_viewer.py" line="314"/>
         <source>Fit</source>
         <translation>Passend</translation>
     </message>
     <message>
-        <location filename="../device_viewer.py" line="299"/>
+        <location filename="../device_viewer.py" line="316"/>
         <source>Zoom. 100% shows the page at its real size, like the browser&apos;s device mode.</source>
         <translation>Zoom. 100% toont de pagina op ware grootte, zoals de device-modus van de browser.</translation>
     </message>

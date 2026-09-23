@@ -48,8 +48,14 @@ A fixed size or a mobile device is recorded in the app itself: the browser runs 
 device emulation, `core/screencast.py` streams the page over the DevTools protocol, and the desktop
 shows it centred in a device frame (`ui/device_viewer.py`), forwarding mouse, touch and keyboard input.
 A headed Chromium window cannot be narrower than about 500 pixels and always draws the emulated
-viewport in its top-left corner, which made phone recordings look broken. Known gaps of the viewer:
-native `<select>` popups, file choosers and `alert`/`confirm` dialogs are not shown yet.
+viewport in its top-left corner, which made phone recordings look broken.
+
+Prompts the headless page cannot show go to the desktop (`core/interactions.py`): a native `<select>`
+opens as a menu in the app, `alert`/`confirm`/`prompt` as an app dialog, and a file input as a file
+picker whose real path is recorded (browsers hide it otherwise). Dialogs also go through the app in a
+headed recording, because Playwright would dismiss them. A replay always accepts dialogs; a dialog that
+was dismissed while recording is flagged on the step. New tabs and popups are shown as a notice and not
+recorded yet.
 
 ## D4 — Several test attributes per project
 

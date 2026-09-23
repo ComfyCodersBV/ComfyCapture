@@ -168,6 +168,10 @@ def execute(
     return StepOutcome(step.id, True, elapsed_ms(started), selector_index=index)
 
 
+def accept_dialogs(page: Page) -> None:
+    page.on("dialog", lambda dialog: dialog.accept())
+
+
 def replay(
     page: Page,
     steps: Iterable[Step],

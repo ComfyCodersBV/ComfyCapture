@@ -189,6 +189,14 @@ class StepBuilder:
         self._append(step, event.element_key)
         return True
 
+    def annotate_last(self, note: str) -> bool:
+        if not self._steps:
+            return False
+        last = self._steps[-1]
+        combined = f"{last.note} {note}" if last.note else note
+        self._steps[-1] = replace(last, note=combined)
+        return True
+
     def _add_fill(self, step: Step, key: str | None) -> bool:
         last = self._steps[-1] if self._steps else None
         if last is not None and key is not None and self._keys.get(last.id) == key:
@@ -237,6 +245,8 @@ class StepBuilder:
             return CONSENT_NOTE
         if action is Action.FILL and event.sensitive:
             return "Password field: point this at the right secret."
+        if action is Action.SET_INPUT_FILES and event.value and ("/" in event.value or "\\" in event.value):
+            return "Uploads a local file: make sure it exists wherever the test runs."
         if action is Action.SET_INPUT_FILES:
             return "Browsers do not reveal file paths: set the path to the file to upload."
         return None

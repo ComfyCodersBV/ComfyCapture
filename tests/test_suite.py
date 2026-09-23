@@ -180,3 +180,22 @@ def test_old_artifacts_are_pruned(tmp_path: Path) -> None:
     assert pruned == 1
     assert not old.exists()
     assert recent.exists()
+
+
+def test_runs_accept_confirm_dialogs(seeded, tmp_path: Path) -> None:
+    connection, project, environment, tests = seeded
+    confirming = tests.save(
+        project.id,
+        make(
+            "delete account",
+            {"id": "n", "action": "navigate", "url": "/form.html"},
+            {"id": "d", "action": "click", "target": target("id", "danger")},
+            expect_text("a", "answer", "yes"),
+        ),
+    )
+
+    [result] = suite.SuiteRunner(
+        plan_for(project, environment, (confirming,), tmp_path), runner.VariableResolver()
+    ).run()
+
+    assert result.status is RunStatus.PASSED, result.message
