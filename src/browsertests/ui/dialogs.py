@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from PySide6.QtGui import QShowEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -83,6 +84,18 @@ class FormDialog(QDialog):
             self.layout_.addWidget(hint(help_text))
         self.layout_.addSpacing(8)
 
+    def add_field_row(self, *fields: tuple[str, QWidget, bool]) -> None:
+        row = QHBoxLayout()
+        row.setSpacing(16)
+        for label, widget, required in fields:
+            column = QVBoxLayout()
+            column.setSpacing(6)
+            column.addWidget(field_label(label, required))
+            column.addWidget(widget)
+            row.addLayout(column, 1)
+        self.layout_.addLayout(row)
+        self.layout_.addSpacing(8)
+
     def add_widget(self, widget: QWidget) -> None:
         self.layout_.addWidget(widget)
         self.layout_.addSpacing(4)
@@ -102,6 +115,17 @@ class FormDialog(QDialog):
     def validate(self) -> tuple[str, QWidget] | None:
         return None
 
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        self.fit_height()
+
+    def fit_height(self) -> None:
+        width = max(self.width(), self.minimumWidth())
+        height = self.layout_.totalHeightForWidth(width)
+        available = self.screen().availableGeometry().height() - 80 if self.screen() else height
+        self.setMinimumHeight(min(height, available))
+        self.resize(width, min(height, available))
+
     def _accept(self) -> None:
         for field in self.findChildren(QLineEdit):
             field.setProperty("invalid", False)
@@ -116,6 +140,7 @@ class FormDialog(QDialog):
         widget.setFocus()
         self.error.setText(message)
         self.error.show()
+        self.fit_height()
 
 
 class ProjectDialog(FormDialog):
@@ -253,8 +278,10 @@ class EnvironmentDialog(FormDialog):
         self.add_widget(self.allow_destructive)
         self.add_widget(hint(self.tr("Only staging allows destructive tests by default.")))
         self.layout_.addSpacing(8)
-        self.add_field(self.tr("Locale"), self.locale, required=False)
-        self.add_field(self.tr("Timezone"), self.timezone, required=False)
+        self.add_field_row(
+            (self.tr("Locale"), self.locale, False),
+            (self.tr("Timezone"), self.timezone, False),
+        )
         self.add_field(
             self.tr("Cookies"),
             self.cookies,
