@@ -14,6 +14,10 @@ The image is based on `mcr.microsoft.com/playwright/python:v1.63.0-noble`, which
 and system libraries for the pinned Playwright version. Bump the tag together with the Playwright pin in
 `pyproject.toml`. Data (database, traces) lives in the `/data` volume.
 
+On Docker Desktop, only paths under your home directory can be mounted, and `127.0.0.1` inside the
+container is the Docker VM: point an environment at `http://host.docker.internal:<port>` to test a site
+running on the host.
+
 ## Getting tests onto the server
 
 ```bash
