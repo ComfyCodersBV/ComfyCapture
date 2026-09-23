@@ -410,7 +410,14 @@ class ProjectView(QStackedWidget):
     def _review(self, test: Test, environment: Environment) -> None:
         if self._project is None or self._project.id is None:
             return
-        review = ReviewDialog(test, self._project, environment, self, self._tests.tags(self._project.id))
+        review = ReviewDialog(
+            test,
+            self._project,
+            environment,
+            self,
+            self._tests.tags(self._project.id),
+            db.VariableRepository(self._connection).for_project(self._project.id),
+        )
         if review.exec() != QDialog.DialogCode.Accepted:
             return
         self._tests.save(self._project.id, review.result_test())

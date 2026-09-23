@@ -16,11 +16,12 @@ from PySide6.QtWidgets import (
 )
 
 from browsertests.core import ir
-from browsertests.core.models import Environment, Project, Step, Test
+from browsertests.core.models import Environment, Project, Step, Test, Variable
 from browsertests.core.session import SessionPayload
 from browsertests.ui.core_process import CoreProcess
 from browsertests.ui.dialogs import split_list
-from browsertests.ui.recording_view import fill_steps_table, steps_table
+from browsertests.ui.recording_view import RecordingDialog, fill_steps_table, steps_table
+from browsertests.ui.step_dialog import StepDialog
 from browsertests.ui.widgets import (
     Card,
     IconButton,
@@ -39,8 +40,10 @@ class ReviewDialog(QDialog):
         environment: Environment,
         parent: QWidget | None = None,
         tags: list[str] | None = None,
+        variables: list[Variable] | None = None,
     ) -> None:
         super().__init__(parent)
+        self._variables = variables or []
         self.setWindowTitle(self.tr("Review test"))
         self.resize(1080, 720)
         self._test = test
@@ -86,15 +89,26 @@ class ReviewDialog(QDialog):
         self.verify_button.setToolTip(
             self.tr("Replays the test headless and keeps only selectors that match the recorded element.")
         )
-        steps_card = Card(self.tr("Steps"), self.tr("Select a step to move or remove it."))
+        steps_card = Card(self.tr("Steps"), self.tr("Double-click a step to edit its value and selectors."))
         steps_card.add_action(self.verify_button)
+        self.table.doubleClicked.connect(self._edit)
         step_buttons = QHBoxLayout()
+        edit = IconButton(self.tr("Edit step"), "edit", "ghost", self._edit)
         move_up = IconButton(self.tr("Move up"), "up", "ghost", lambda: self._move(-1))
         move_down = IconButton(self.tr("Move down"), "down", "ghost", lambda: self._move(1))
+        rerecord = IconButton(
+            self.tr("Re-record step"), "record", "ghost", lambda: self._record_at(replace_step=True)
+        )
+        record_after = IconButton(
+            self.tr("Record after this step"),
+            "continue",
+            "ghost",
+            lambda: self._record_at(replace_step=False),
+        )
         remove = IconButton(self.tr("Remove step"), "trash", "danger", self._remove)
-        for button in (move_up, move_down, remove):
+        for button in (edit, move_up, move_down, rerecord, record_after, remove):
             step_buttons.addWidget(button)
-        enable_with_selection(self.table, move_up, move_down, remove)
+        enable_with_selection(self.table, edit, move_up, move_down, rerecord, record_after, remove)
         step_buttons.addStretch()
         steps_card.body.addWidget(self.table, 1)
         steps_card.body.addLayout(step_buttons)
@@ -146,6 +160,42 @@ class ReviewDialog(QDialog):
             return
         self._steps[row], self._steps[row + offset] = self._steps[row + offset], self._steps[row]
         self._refresh(row + offset)
+
+    def _edit(self) -> None:
+        row = self._selected_row()
+        if row is None:
+            return
+        dialog = StepDialog(self._steps[row], self._variables, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._steps[row] = dialog.result_step()
+            self._refresh(row)
+
+    def _record_at(self, replace_step: bool) -> None:
+        row = self._selected_row()
+        if row is None:
+            return
+        keep = row if replace_step else row + 1
+        payload = SessionPayload(
+            base_url=self._environment.base_url,
+            test_id_attributes=self._project.test_id_attributes,
+            project_slug=self._project.slug,
+            device=self._test.device,
+            environment=self._environment.config,
+            steps=tuple(self._steps[:keep]),
+            viewer=not self._test.device.fullscreen,
+        )
+        recording = RecordingDialog(payload.to_dict(), self)
+        if recording.exec() != QDialog.DialogCode.Accepted:
+            return
+        recorded = list(recording.steps[keep:])
+        if not recorded:
+            return
+        if replace_step:
+            recorded[0] = replace(recorded[0], id=self._steps[row].id)
+            self._steps[row : row + 1] = recorded
+        else:
+            self._steps[keep:keep] = recorded
+        self._refresh(keep)
 
     def _remove(self) -> None:
         row = self._selected_row()

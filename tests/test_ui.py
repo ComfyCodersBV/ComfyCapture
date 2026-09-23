@@ -161,3 +161,44 @@ def test_tag_completer_completes_the_last_tag_only(application) -> None:
 
     assert completer.splitPath(field.text()) == ["che"]
     assert completer.pathFromIndex(index) == "CINF-19, checkout"
+
+
+def test_step_dialog_edits_value_and_promotes_a_fallback(application) -> None:
+    from browsertests.core.models import Selector, SelectorKind, Target, Variable
+    from browsertests.ui.step_dialog import StepDialog
+
+    step = Step(
+        "s2",
+        Action.FILL,
+        target=Target(
+            Selector(SelectorKind.ID, "wire-8f2a1c", suspicious=True),
+            (Selector(SelectorKind.LABEL, "Email"),),
+        ),
+        value="jane@example.com",
+        note="Password field: point this at the right secret.",
+    )
+    dialog = StepDialog(step, [Variable("customer_email")])
+
+    dialog.value.setText("{{customer_email}}")
+    dialog.selectors.setCurrentRow(1)
+    dialog._make_primary()
+    dialog.resolved.setChecked(True)
+    result = dialog.result_step()
+
+    assert result.id == "s2"
+    assert result.value == "{{customer_email}}"
+    assert result.target.primary.value == "Email"
+    assert result.note is None
+
+
+def test_step_dialog_turns_an_unknown_step_into_a_click(application) -> None:
+    from browsertests.core.models import Selector, SelectorKind
+    from browsertests.ui.step_dialog import StepDialog
+
+    dialog = StepDialog(Step("s9", Action.UNKNOWN, raw="click inside an iframe"), [])
+    dialog.action.setCurrentIndex(dialog.action.findData(Action.CLICK))
+
+    assert dialog.validate() is not None
+    dialog._add_selector(Selector(SelectorKind.CSS, "#pay"))
+    assert dialog.validate() is None
+    assert dialog.result_step().raw is None

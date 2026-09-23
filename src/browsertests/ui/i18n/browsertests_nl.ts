@@ -425,8 +425,8 @@
     </message>
     <message>
         <location filename="../project_view.py" line="331"/>
-        <location filename="../project_view.py" line="438"/>
         <location filename="../project_view.py" line="445"/>
+        <location filename="../project_view.py" line="452"/>
         <source>Environment</source>
         <translation>Omgeving</translation>
     </message>
@@ -452,22 +452,22 @@
     </message>
     <message>
         <location filename="../project_view.py" line="367"/>
-        <location filename="../project_view.py" line="438"/>
+        <location filename="../project_view.py" line="445"/>
         <source>Add an environment to this project first.</source>
         <translation>Voeg eerst een omgeving aan dit project toe.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="424"/>
+        <location filename="../project_view.py" line="431"/>
         <source>Delete test</source>
         <translation>Test verwijderen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="424"/>
+        <location filename="../project_view.py" line="431"/>
         <source>Delete {name}?</source>
         <translation>{name} verwijderen?</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="445"/>
+        <location filename="../project_view.py" line="452"/>
         <source>Run against</source>
         <translation>Draaien op</translation>
     </message>
@@ -633,128 +633,143 @@
 <context>
     <name>ReviewDialog</name>
     <message>
-        <location filename="../test_editor.py" line="44"/>
-        <location filename="../test_editor.py" line="61"/>
+        <location filename="../test_editor.py" line="47"/>
+        <location filename="../test_editor.py" line="64"/>
         <source>Review test</source>
         <translation>Test bekijken</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="55"/>
+        <location filename="../test_editor.py" line="58"/>
         <source>This test changes data (places orders, sends e-mails, pays)</source>
         <translation>Deze test wijzigt gegevens (plaatst bestellingen, verstuurt e-mails, betaalt)</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="57"/>
+        <location filename="../test_editor.py" line="60"/>
         <source>e.g. Guest checkout</source>
         <translation>bijv. Afrekenen als gast</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="60"/>
+        <location filename="../test_editor.py" line="63"/>
         <source>What this test proves</source>
         <translation>Wat deze test aantoont</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="64"/>
+        <location filename="../test_editor.py" line="67"/>
         <source>{device}  ·  {environment} ({url})</source>
         <translation>{device}  ·  {environment} ({url})</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="72"/>
+        <location filename="../test_editor.py" line="75"/>
         <source>Name</source>
         <translation>Naam</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="73"/>
+        <location filename="../test_editor.py" line="76"/>
         <source>Tags</source>
         <translation>Tags</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="76"/>
+        <location filename="../test_editor.py" line="79"/>
         <source>Description</source>
         <translation>Omschrijving</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="85"/>
+        <location filename="../test_editor.py" line="88"/>
         <source>Verify selectors</source>
         <translation>Selectors controleren</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="87"/>
+        <location filename="../test_editor.py" line="90"/>
         <source>Replays the test headless and keeps only selectors that match the recorded element.</source>
         <translation>Speelt de test headless af en houdt alleen selectors over die het opgenomen element vinden.</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="89"/>
+        <location filename="../test_editor.py" line="92"/>
         <source>Steps</source>
         <translation>Stappen</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="89"/>
-        <source>Select a step to move or remove it.</source>
-        <translation>Selecteer een stap om hem te verplaatsen of te verwijderen.</translation>
+        <location filename="../test_editor.py" line="92"/>
+        <source>Double-click a step to edit its value and selectors.</source>
+        <translation>Dubbelklik op een stap om waarde en selectors te bewerken.</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="92"/>
+        <location filename="../test_editor.py" line="96"/>
+        <source>Edit step</source>
+        <translation>Stap bewerken</translation>
+    </message>
+    <message>
+        <location filename="../test_editor.py" line="97"/>
         <source>Move up</source>
         <translation>Omhoog</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="93"/>
+        <location filename="../test_editor.py" line="98"/>
         <source>Move down</source>
         <translation>Omlaag</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="94"/>
+        <location filename="../test_editor.py" line="100"/>
+        <source>Re-record step</source>
+        <translation>Stap opnieuw opnemen</translation>
+    </message>
+    <message>
+        <location filename="../test_editor.py" line="103"/>
+        <source>Record after this step</source>
+        <translation>Opnemen na deze stap</translation>
+    </message>
+    <message>
+        <location filename="../test_editor.py" line="108"/>
         <source>Remove step</source>
         <translation>Stap verwijderen</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="105"/>
+        <location filename="../test_editor.py" line="119"/>
         <source>Discard</source>
         <translation>Weggooien</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="106"/>
+        <location filename="../test_editor.py" line="120"/>
         <source>Save test</source>
         <translation>Test opslaan</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="134"/>
+        <location filename="../test_editor.py" line="148"/>
         <source>{count} steps, {attention} need attention.</source>
         <translation>{count} stappen, {attention} vragen aandacht.</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="163"/>
+        <location filename="../test_editor.py" line="213"/>
         <source>This test is marked destructive and {environment} does not allow destructive tests.</source>
         <translation>Deze test is als destructief gemarkeerd en {environment} staat geen destructieve tests toe.</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="176"/>
+        <location filename="../test_editor.py" line="226"/>
         <source>Verifying selectors…</source>
         <translation>Selectors controleren…</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="185"/>
+        <location filename="../test_editor.py" line="235"/>
         <source>Verifying step {step}…</source>
         <translation>Stap {step} controleren…</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="189"/>
+        <location filename="../test_editor.py" line="239"/>
         <source>Verification failed: {message}</source>
         <translation>Controle mislukt: {message}</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="199"/>
+        <location filename="../test_editor.py" line="249"/>
         <source>Verification stopped at step {step}: {message}</source>
         <translation>Controle gestopt bij stap {step}: {message}</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="204"/>
+        <location filename="../test_editor.py" line="254"/>
         <source>All steps replayed; selectors verified.</source>
         <translation>Alle stappen afgespeeld; selectors gecontroleerd.</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="208"/>
+        <location filename="../test_editor.py" line="258"/>
         <source>A test needs a name.</source>
         <translation>Een test heeft een naam nodig.</translation>
     </message>
@@ -958,6 +973,115 @@
         <location filename="../settings_dialog.py" line="34"/>
         <source>Save settings</source>
         <translation>Instellingen opslaan</translation>
+    </message>
+</context>
+<context>
+    <name>StepDialog</name>
+    <message>
+        <location filename="../step_dialog.py" line="47"/>
+        <source>Edit step</source>
+        <translation>Stap bewerken</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="48"/>
+        <source>The first selector is tried first; the others are fallbacks, in order.</source>
+        <translation>De eerste selector wordt eerst geprobeerd; de andere zijn reserves, op volgorde.</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="51"/>
+        <source>Recorded as: {raw}</source>
+        <translation>Opgenomen als: {raw}</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="59"/>
+        <source>Action</source>
+        <translation>Actie</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="63"/>
+        <source>Path or URL</source>
+        <translation>Pad of URL</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="70"/>
+        <source>Insert variable</source>
+        <translation>Variabele invoegen</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="80"/>
+        <source>Value</source>
+        <translation>Waarde</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="82"/>
+        <source>Expect the element to be checked</source>
+        <translation>Verwacht dat het element aangevinkt is</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="90"/>
+        <source>default (10 s)</source>
+        <translation>standaard (10 s)</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="92"/>
+        <source>Wait at most</source>
+        <translation>Maximaal wachten</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="101"/>
+        <source>Make primary</source>
+        <translation>Primair maken</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="102"/>
+        <source>Up</source>
+        <translation>Omhoog</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="103"/>
+        <source>Down</source>
+        <translation>Omlaag</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="104"/>
+        <source>Remove</source>
+        <translation>Verwijderen</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="106"/>
+        <location filename="../step_dialog.py" line="186"/>
+        <source>Add CSS selector</source>
+        <translation>CSS-selector toevoegen</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="107"/>
+        <source>Selectors</source>
+        <translation>Selectors</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="111"/>
+        <source>Clear the attention note: {note}</source>
+        <translation>Aandachtspunt wissen: {note}</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="115"/>
+        <source>Apply</source>
+        <translation>Toepassen</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="154"/>
+        <source>primary</source>
+        <translation>primair</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="154"/>
+        <source>fallback {number}</source>
+        <translation>reserve {number}</translation>
+    </message>
+    <message>
+        <location filename="../step_dialog.py" line="186"/>
+        <source>CSS selector</source>
+        <translation>CSS-selector</translation>
     </message>
 </context>
 <context>

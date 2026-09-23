@@ -170,6 +170,10 @@ def stylesheet(tokens: Tokens) -> str:
         background: {tokens.input}; }}
     QCheckBox::indicator:checked {{ background: {tokens.accent}; border-color: {tokens.accent}; }}
 
+    QListWidget {{ background: {tokens.input}; border: 1px solid {tokens.border}; border-radius: 8px;
+        padding: 4px; outline: 0; }}
+    QListWidget::item {{ padding: 7px 8px; border-radius: 6px; }}
+    QListWidget::item:selected {{ background: {tokens.accent_soft}; color: {tokens.text}; }}
     QTableWidget {{ background: transparent; border: none; gridline-color: transparent; outline: 0;
         alternate-background-color: {tokens.surface_raised}; }}
     QTableWidget::item {{ padding: 6px 8px; border-bottom: 1px solid {tokens.border}; }}
