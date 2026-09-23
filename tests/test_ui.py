@@ -124,3 +124,40 @@ def test_run_dialog_shows_live_results(application, tmp_path, site_url) -> None:
 
     assert "Passed" in dialog.table.item(0, 0).text()
     assert db.RunRepository(connection).latest([passing.id])[passing.id].status.value == "passed"
+
+
+def test_variables_dialog_reports_references_that_are_not_defined(application, seeded, monkeypatch) -> None:
+    from browsertests.core.models import Variable
+    from browsertests.ui.variables_dialog import VariablesDialog
+
+    connection, project, _, test = seeded
+    db.TestRepository(connection).save(
+        project.id,
+        Test(
+            id=ir.new_test_id(),
+            name="login",
+            steps=(Step("s1", Action.NAVIGATE, url="/{{locale}}/login?pw={{secret:admin_password}}"),),
+        ),
+    )
+    db.VariableRepository(connection).save(project.id, Variable("locale", "nl"))
+    monkeypatch.setattr("browsertests.ui.variables_dialog.SecretStore.has", lambda self, name: False)
+
+    dialog = VariablesDialog(connection, project)
+
+    assert dialog.table.rowCount() == 1
+    assert "secret:admin_password" in dialog.missing.text()
+    assert "locale" not in dialog.missing.text()
+
+
+def test_tag_completer_completes_the_last_tag_only(application) -> None:
+    from PySide6.QtWidgets import QLineEdit
+
+    from browsertests.ui.widgets import TagCompleter
+
+    field = QLineEdit("CINF-19, che")
+    completer = TagCompleter(["checkout", "CINF-20"], field)
+    field.setCompleter(completer)
+    index = completer.model().index(0, 0)
+
+    assert completer.splitPath(field.text()) == ["che"]
+    assert completer.pathFromIndex(index) == "CINF-19, checkout"

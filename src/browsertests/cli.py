@@ -119,11 +119,7 @@ def command_run(arguments: argparse.Namespace) -> int:
         headed=arguments.headed,
         retries=suite.DEFAULT_RETRIES if arguments.retries is None else arguments.retries,
     )
-    variables = dict(
-        connection.execute(
-            "SELECT name, value FROM variables WHERE project_id = ? AND is_secret = 0", (project.id,)
-        ).fetchall()
-    )
+    variables = db.VariableRepository(connection).values(project.id)
     resolver = runner.VariableResolver(variables, SecretStore(project.slug).get)
 
     def emit(message: dict[str, Any]) -> None:

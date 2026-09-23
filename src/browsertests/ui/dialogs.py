@@ -26,7 +26,7 @@ from browsertests.core.models import (
     StoredTest,
 )
 from browsertests.ui.icons import icon
-from browsertests.ui.widgets import IconButton, field_label, hint
+from browsertests.ui.widgets import IconButton, attach_tag_completer, field_label, hint
 
 DESKTOP_SIZES = ((1920, 1080), (1440, 900), (1280, 720))
 
@@ -325,7 +325,9 @@ class EnvironmentDialog(FormDialog):
 
 
 class RecordSetupDialog(FormDialog):
-    def __init__(self, environments: list[Environment], parent: QWidget | None = None) -> None:
+    def __init__(
+        self, environments: list[Environment], parent: QWidget | None = None, tags: list[str] | None = None
+    ) -> None:
         super().__init__(parent)
         self.set_heading(
             self.tr("Record a new test"),
@@ -335,6 +337,7 @@ class RecordSetupDialog(FormDialog):
         self.name.setPlaceholderText(self.tr("e.g. Guest checkout"))
         self.tags = QLineEdit()
         self.tags.setPlaceholderText("CINF-19, checkout")
+        attach_tag_completer(self.tags, tags or [])
         self.environment = QComboBox()
         for environment in environments:
             self.environment.addItem(f"{environment.name}  ·  {environment.base_url}", environment.id)

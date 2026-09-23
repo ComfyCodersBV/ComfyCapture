@@ -66,3 +66,15 @@ def test_migrate_is_idempotent(tmp_path) -> None:
     connection = db.connect(path)
 
     assert connection.execute("PRAGMA user_version").fetchone()[0] == len(db.SCHEMA)
+
+
+def test_secret_values_never_reach_the_database(connection, project: Project) -> None:
+    from browsertests.core.models import Variable
+
+    variables = db.VariableRepository(connection)
+    variables.save(project.id, Variable("order", "42"))
+    variables.save(project.id, Variable("admin_password", "hunter2", is_secret=True))
+    variables.save(project.id, Variable("order", "43"))
+
+    assert variables.values(project.id) == {"order": "43"}
+    assert "hunter2" not in str(connection.execute("SELECT * FROM variables").fetchall())

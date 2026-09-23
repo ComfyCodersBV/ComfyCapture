@@ -178,3 +178,10 @@ class RunRecord:
     failed_step_id: str | None = None
     message: str | None = None
     artifact_path: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Variable:
+    name: str
+    value: str | None = None
+    is_secret: bool = False

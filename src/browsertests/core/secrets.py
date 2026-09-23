@@ -42,3 +42,15 @@ class SecretStore:
         import keyring
 
         keyring.set_password(self._service, name, value)
+
+    def delete(self, name: str) -> None:
+        import keyring
+        from keyring.errors import PasswordDeleteError
+
+        try:
+            keyring.delete_password(self._service, name)
+        except PasswordDeleteError:
+            return
+
+    def has(self, name: str) -> bool:
+        return self.get(name) is not None

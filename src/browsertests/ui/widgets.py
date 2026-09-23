@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QCoreApplication, QEvent, QObject, Qt
+from PySide6.QtCore import QCoreApplication, QEvent, QModelIndex, QObject, QPersistentModelIndex, Qt
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
+    QCompleter,
     QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QPushButton,
     QTableWidget,
     QVBoxLayout,
@@ -150,3 +152,25 @@ def muted(text: str) -> QLabel:
     label.setObjectName("Muted")
     label.setWordWrap(True)
     return label
+
+
+class TagCompleter(QCompleter):
+    def __init__(self, tags: list[str], parent: QObject | None = None) -> None:
+        super().__init__(tags, parent)
+        self.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.setFilterMode(Qt.MatchFlag.MatchContains)
+
+    def splitPath(self, path: str) -> list[str]:
+        return [path.split(",")[-1].strip()]
+
+    def pathFromIndex(self, index: QModelIndex | QPersistentModelIndex) -> str:
+        chosen = str(index.data())
+        widget = self.widget()
+        text = widget.text() if isinstance(widget, QLineEdit) else ""
+        head = [part.strip() for part in text.split(",")[:-1] if part.strip()]
+        return ", ".join([*head, chosen])
+
+
+def attach_tag_completer(field: QLineEdit, tags: list[str]) -> None:
+    if tags:
+        field.setCompleter(TagCompleter(tags, field))

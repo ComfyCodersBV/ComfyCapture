@@ -21,12 +21,24 @@ from browsertests.core.session import SessionPayload
 from browsertests.ui.core_process import CoreProcess
 from browsertests.ui.dialogs import split_list
 from browsertests.ui.recording_view import fill_steps_table, steps_table
-from browsertests.ui.widgets import Card, IconButton, enable_with_selection, field_label, muted
+from browsertests.ui.widgets import (
+    Card,
+    IconButton,
+    attach_tag_completer,
+    enable_with_selection,
+    field_label,
+    muted,
+)
 
 
 class ReviewDialog(QDialog):
     def __init__(
-        self, test: Test, project: Project, environment: Environment, parent: QWidget | None = None
+        self,
+        test: Test,
+        project: Project,
+        environment: Environment,
+        parent: QWidget | None = None,
+        tags: list[str] | None = None,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle(self.tr("Review test"))
@@ -44,6 +56,7 @@ class ReviewDialog(QDialog):
         self.destructive.setChecked(test.destructive)
         self.name.setPlaceholderText(self.tr("e.g. Guest checkout"))
         self.tags.setPlaceholderText("CINF-19, checkout")
+        attach_tag_completer(self.tags, tags or [])
         self.description.setPlaceholderText(self.tr("What this test proves"))
         title = QLabel(self.tr("Review test"))
         title.setObjectName("PageTitle")

@@ -28,7 +28,16 @@ from browsertests.ui.dialogs import EnvironmentDialog, RecordSetupDialog, split_
 from browsertests.ui.recording_view import RecordingDialog
 from browsertests.ui.run_view import STATUS_COLORS, RunDialog
 from browsertests.ui.test_editor import ReviewDialog
-from browsertests.ui.widgets import Card, IconButton, data_table, enable_with_selection, fit_rows, muted
+from browsertests.ui.variables_dialog import VariablesDialog
+from browsertests.ui.widgets import (
+    Card,
+    IconButton,
+    attach_tag_completer,
+    data_table,
+    enable_with_selection,
+    fit_rows,
+    muted,
+)
 
 
 def set_row(widget: QTableWidget, row: int, key: int, cells: tuple[str, ...]) -> None:
@@ -65,6 +74,7 @@ class ProjectView(QStackedWidget):
 
     def __init__(self, connection: sqlite3.Connection, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._connection = connection
         self._environments = db.EnvironmentRepository(connection)
         self._tests = db.TestRepository(connection)
         self._runs = db.RunRepository(connection)
@@ -115,6 +125,7 @@ class ProjectView(QStackedWidget):
         titles.addWidget(self.title)
         titles.addWidget(self.attributes)
         header.addLayout(titles, 1)
+        header.addWidget(IconButton(self.tr("Variables"), "braces", "ghost", self._open_variables))
         header.addWidget(IconButton(self.tr("Edit"), "edit", "ghost", self.edit_project_requested.emit))
         header.addWidget(IconButton(self.tr("Delete"), "trash", "danger", self.delete_project_requested.emit))
         layout.addLayout(header)
@@ -169,6 +180,7 @@ class ProjectView(QStackedWidget):
         self.tag_filter.setPlaceholderText(self.tr("Filter by tags, e.g. CINF-19, checkout"))
         self.tag_filter.setClearButtonEnabled(True)
         self.tag_filter.textChanged.connect(self._load_tests)
+        self._filter_completer_tags: list[str] = []
         self.test_empty = muted(self.tr("No tests yet. Record one with the button above."))
         tests.body.addWidget(self.tag_filter)
         tests.body.addWidget(self.test_empty)
@@ -220,6 +232,10 @@ class ProjectView(QStackedWidget):
         if self._project is None or self._project.id is None:
             self.test_table.setRowCount(0)
             return
+        tags = self._tests.tags(self._project.id)
+        if tags != self._filter_completer_tags:
+            self._filter_completer_tags = tags
+            attach_tag_completer(self.tag_filter, tags)
         stored = self._tests.for_project(self._project.id, split_list(self.tag_filter.text()))
         latest = self._runs.latest([item.id for item in stored])
         self.test_table.setRowCount(len(stored))
@@ -248,6 +264,10 @@ class ProjectView(QStackedWidget):
             else self.tr("No tests yet. Record one with the button above.")
         )
         self.test_empty.setVisible(not stored)
+
+    def _open_variables(self) -> None:
+        if self._project is not None:
+            VariablesDialog(self._connection, self._project, self).exec()
 
     def _role(self, test_id: str) -> str:
         if self._project is None:
@@ -347,7 +367,7 @@ class ProjectView(QStackedWidget):
                 self, self.tr("Record"), self.tr("Add an environment to this project first.")
             )
             return
-        setup = RecordSetupDialog(environments, self)
+        setup = RecordSetupDialog(environments, self, self._tests.tags(self._project.id or 0))
         if setup.exec() != QDialog.DialogCode.Accepted:
             return
         environment = next(item for item in environments if item.id == setup.environment_id())
@@ -390,7 +410,7 @@ class ProjectView(QStackedWidget):
     def _review(self, test: Test, environment: Environment) -> None:
         if self._project is None or self._project.id is None:
             return
-        review = ReviewDialog(test, self._project, environment, self)
+        review = ReviewDialog(test, self._project, environment, self, self._tests.tags(self._project.id))
         if review.exec() != QDialog.DialogCode.Accepted:
             return
         self._tests.save(self._project.id, review.result_test())

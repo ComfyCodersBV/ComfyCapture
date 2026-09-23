@@ -17,6 +17,7 @@ from browsertests.core.models import (
     RunStatus,
     StoredTest,
     Test,
+    Variable,
 )
 
 APP_NAME = "BrowsertestSuite"
@@ -410,3 +411,36 @@ class RunRepository:
             message=row["message"],
             artifact_path=row["artifact_path"],
         )
+
+
+class VariableRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self._connection = connection
+
+    def for_project(self, project_id: int) -> list[Variable]:
+        rows = self._connection.execute(
+            "SELECT name, value, is_secret FROM variables WHERE project_id = ? ORDER BY name", (project_id,)
+        ).fetchall()
+        return [Variable(row["name"], row["value"], bool(row["is_secret"])) for row in rows]
+
+    def values(self, project_id: int) -> dict[str, str]:
+        return {
+            variable.name: variable.value or ""
+            for variable in self.for_project(project_id)
+            if not variable.is_secret
+        }
+
+    def save(self, project_id: int, variable: Variable) -> None:
+        value = None if variable.is_secret else (variable.value or "")
+        with self._connection:
+            self._connection.execute(
+                "INSERT INTO variables (project_id, name, value, is_secret) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT (project_id, name) DO UPDATE SET value = excluded.value, is_secret = excluded.is_secret",
+                (project_id, variable.name, value, int(variable.is_secret)),
+            )
+
+    def delete(self, project_id: int, name: str) -> None:
+        with self._connection:
+            self._connection.execute(
+                "DELETE FROM variables WHERE project_id = ? AND name = ?", (project_id, name)
+            )
