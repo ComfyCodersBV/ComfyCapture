@@ -48,6 +48,14 @@ class SelectorKind(StrEnum):
     CSS = "css"
 
 
+OPTIONAL_SELECTOR_KINDS = (
+    SelectorKind.ID,
+    SelectorKind.LABEL,
+    SelectorKind.ROLE,
+    SelectorKind.PLACEHOLDER,
+)
+
+
 class DeviceKind(StrEnum):
     DESKTOP = "desktop"
     MOBILE = "mobile"
@@ -128,6 +136,7 @@ class Project:
     created_at: str = ""
     setup_test_uuid: str | None = None
     login_test_uuid: str | None = None
+    selector_kinds: tuple[SelectorKind, ...] = OPTIONAL_SELECTOR_KINDS
 
 
 @dataclass(frozen=True, slots=True)

@@ -108,11 +108,22 @@ def rank(selectors: Iterable[Selector], test_id_attributes: tuple[str, ...]) -> 
     return Target(primary=ordered[0], fallbacks=tuple(ordered[1:]))
 
 
+ALWAYS_KINDS = frozenset({SelectorKind.TEST_ID, SelectorKind.CSS})
+
+
 def target_from_candidates(
-    candidates: Iterable[Mapping[str, Any]], test_id_attributes: tuple[str, ...]
+    candidates: Iterable[Mapping[str, Any]],
+    test_id_attributes: tuple[str, ...],
+    allowed_kinds: Iterable[SelectorKind] | None = None,
 ) -> Target | None:
+    allowed = ALWAYS_KINDS | set(allowed_kinds) if allowed_kinds is not None else None
     selectors = [selector_from_candidate(candidate) for candidate in candidates]
-    return rank([selector for selector in selectors if selector is not None], test_id_attributes)
+    kept = [
+        selector
+        for selector in selectors
+        if selector is not None and (allowed is None or selector.kind in allowed)
+    ]
+    return rank(kept, test_id_attributes)
 
 
 def css_identifier(name: str) -> str:

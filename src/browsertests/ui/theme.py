@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QColor, QGuiApplication, QPalette
@@ -110,7 +112,21 @@ def palette(tokens: Tokens) -> QPalette:
     return result
 
 
+CHECK_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" '
+    'stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+)
+
+
+def check_image() -> str:
+    path = Path(tempfile.gettempdir()) / "browsertests-check.svg"
+    if not path.is_file() or path.read_text(encoding="utf-8") != CHECK_SVG:
+        path.write_text(CHECK_SVG, encoding="utf-8")
+    return path.as_posix()
+
+
 def stylesheet(tokens: Tokens) -> str:
+    check = check_image()
     return f"""
     * {{ font-size: 13px; }}
     QMainWindow, QDialog {{ background: {tokens.background}; color: {tokens.text}; }}
@@ -168,7 +184,8 @@ def stylesheet(tokens: Tokens) -> str:
     QCheckBox {{ spacing: 8px; }}
     QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {tokens.border};
         background: {tokens.input}; }}
-    QCheckBox::indicator:checked {{ background: {tokens.accent}; border-color: {tokens.accent}; }}
+    QCheckBox::indicator:checked {{ background: {tokens.accent}; border-color: {tokens.accent};
+        image: url("{check}"); }}
 
     QListWidget {{ background: {tokens.input}; border: 1px solid {tokens.border}; border-radius: 8px;
         padding: 4px; outline: 0; }}

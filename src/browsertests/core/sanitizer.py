@@ -14,7 +14,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from browsertests.core import ir, selectors
-from browsertests.core.models import Action, Step
+from browsertests.core.models import Action, SelectorKind, Step
 
 NAVIGATION_GRACE_MS = 2500
 SECRET_PLACEHOLDER = "{{secret:password}}"
@@ -106,7 +106,9 @@ class StepBuilder:
         mobile: bool = False,
         steps: Iterable[Step] = (),
         navigation_grace_ms: float = NAVIGATION_GRACE_MS,
+        selector_kinds: Iterable[SelectorKind] | None = None,
     ) -> None:
+        self._selector_kinds = tuple(selector_kinds) if selector_kinds is not None else None
         self._base_url = base_url
         self._test_id_attributes = test_id_attributes
         self._mobile = mobile
@@ -149,7 +151,9 @@ class StepBuilder:
             self._append(self._unknown(event, f"{event.type} {where} on {event.url}"), None)
             return True
 
-        target = selectors.target_from_candidates(event.candidates, self._test_id_attributes)
+        target = selectors.target_from_candidates(
+            event.candidates, self._test_id_attributes, self._selector_kinds
+        )
         if target is None:
             self._append(
                 self._unknown(event, f"{event.type} on <{event.tag or '?'}> without a usable selector"), None

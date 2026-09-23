@@ -32,6 +32,8 @@ from browsertests.ui.widgets import IconButton, hint
 ASSERTIONS = frozenset(
     {Action.ASSERT_VISIBLE, Action.ASSERT_TEXT, Action.ASSERT_VALUE, Action.ASSERT_CHECKED}
 )
+
+
 def selector_text(selector: Selector) -> str:
     flag = "   ⚠ generated-looking id" if selector.suspicious else ""
     prefix = "css " if selector.kind is SelectorKind.CSS else ""

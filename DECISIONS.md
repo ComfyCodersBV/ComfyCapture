@@ -59,6 +59,10 @@ wire:model, name`. A configured attribute also matches its modifier variants (`w
 `wire:model.live`). A `test_id` selector stores the actual attribute and is replayed as an escaped CSS
 attribute selector, so `set_test_id_attribute` is not needed.
 
+Id, label, role + name and placeholder are selector strategies, not attributes, so they are separate
+per-project switches (`projects.selector_kinds`, all on by default). A test attribute and the CSS path
+are always kept, so an element never ends up without a selector.
+
 ## D5 — Tag normalisation
 
 Tags are trimmed and de-duplicated; ticket-like tags (`[A-Za-z]+-\d+`) are upper-cased

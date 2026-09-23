@@ -78,3 +78,12 @@ def test_secret_values_never_reach_the_database(connection, project: Project) ->
 
     assert variables.values(project.id) == {"order": "43"}
     assert "hunter2" not in str(connection.execute("SELECT * FROM variables").fetchall())
+
+
+def test_selector_kinds_round_trip(connection) -> None:
+    from browsertests.core.models import SelectorKind
+
+    projects = db.ProjectRepository(connection)
+    saved = projects.save(Project(None, "lean", "Lean", selector_kinds=(SelectorKind.LABEL,)))
+
+    assert projects.get(saved.id).selector_kinds == (SelectorKind.LABEL,)

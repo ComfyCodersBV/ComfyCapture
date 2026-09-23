@@ -52,3 +52,15 @@ def test_incomplete_candidates_are_dropped() -> None:
     )
 
     assert target is None
+
+
+def test_disabled_selector_kinds_are_left_out_but_css_stays() -> None:
+    candidates = [
+        {"kind": "id", "value": "pay"},
+        {"kind": "role", "role": "button", "value": "Pay"},
+        {"kind": "css", "value": "form > button"},
+    ]
+
+    target = selectors.target_from_candidates(candidates, (), allowed_kinds=(SelectorKind.ROLE,))
+
+    assert [selector.kind for selector in target.candidates] == [SelectorKind.ROLE, SelectorKind.CSS]

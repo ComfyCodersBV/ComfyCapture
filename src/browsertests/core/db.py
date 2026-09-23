@@ -15,6 +15,7 @@ from browsertests.core.models import (
     Project,
     RunRecord,
     RunStatus,
+    SelectorKind,
     StoredTest,
     Test,
     Variable,
@@ -90,6 +91,9 @@ SCHEMA: tuple[str, ...] = (
     ALTER TABLE projects ADD COLUMN login_test_uuid TEXT NULL;
     CREATE INDEX idx_runs_test ON runs(test_id, started_at);
     """,
+    """
+    ALTER TABLE projects ADD COLUMN selector_kinds TEXT NOT NULL DEFAULT '["id", "label", "role", "placeholder"]';
+    """,
 )
 
 
@@ -155,19 +159,27 @@ class ProjectRepository:
 
     def save(self, project: Project) -> Project:
         attributes = json.dumps(list(project.test_id_attributes))
-        values = (project.slug, project.name, attributes, project.setup_test_uuid, project.login_test_uuid)
+        kinds = json.dumps([kind.value for kind in project.selector_kinds])
+        values = (
+            project.slug,
+            project.name,
+            attributes,
+            project.setup_test_uuid,
+            project.login_test_uuid,
+            kinds,
+        )
         with self._connection:
             if project.id is None:
                 created_at = now()
                 cursor = self._connection.execute(
                     "INSERT INTO projects (slug, name, test_id_attributes, setup_test_uuid, login_test_uuid, "
-                    "created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    "selector_kinds, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (*values, created_at),
                 )
                 return replace(project, id=cursor.lastrowid, created_at=created_at)
             self._connection.execute(
                 "UPDATE projects SET slug = ?, name = ?, test_id_attributes = ?, setup_test_uuid = ?, "
-                "login_test_uuid = ? WHERE id = ?",
+                "login_test_uuid = ?, selector_kinds = ? WHERE id = ?",
                 (*values, project.id),
             )
         return project
@@ -186,6 +198,7 @@ class ProjectRepository:
             created_at=row["created_at"],
             setup_test_uuid=row["setup_test_uuid"],
             login_test_uuid=row["login_test_uuid"],
+            selector_kinds=tuple(SelectorKind(kind) for kind in json.loads(row["selector_kinds"])),
         )
 
 

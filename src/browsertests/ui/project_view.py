@@ -356,6 +356,7 @@ class ProjectView(QStackedWidget):
             environment=environment.config,
             steps=test.steps,
             viewer=not test.device.fullscreen,
+            selector_kinds=project.selector_kinds,
         )
 
     def _record_test(self) -> None:

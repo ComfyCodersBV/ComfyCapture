@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from browsertests.core import ir, runner
-from browsertests.core.models import Device, EnvironmentConfig, Step
+from browsertests.core.models import Device, EnvironmentConfig, SelectorKind, Step
 from browsertests.core.recorder import Recorder
 from browsertests.core.screencast import InputBridge, Screencast
 from browsertests.core.secrets import SecretStore
@@ -40,6 +40,7 @@ class SessionPayload:
     variables: dict[str, str] = field(default_factory=dict)
     headless: bool = False
     viewer: bool = False
+    selector_kinds: tuple[SelectorKind, ...] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -58,6 +59,9 @@ class SessionPayload:
             "variables": self.variables,
             "headless": self.headless,
             "viewer": self.viewer,
+            "selector_kinds": None
+            if self.selector_kinds is None
+            else [kind.value for kind in self.selector_kinds],
         }
 
     @classmethod
@@ -73,6 +77,9 @@ class SessionPayload:
             variables=dict(document.get("variables") or {}),
             headless=bool(document.get("headless", False)),
             viewer=bool(document.get("viewer", False)),
+            selector_kinds=None
+            if document.get("selector_kinds") is None
+            else tuple(SelectorKind(kind) for kind in document["selector_kinds"]),
         )
 
 
@@ -155,6 +162,7 @@ def record(
             payload.test_id_attributes,
             mobile=payload.device.is_mobile,
             steps=payload.steps,
+            selector_kinds=payload.selector_kinds,
             on_change=lambda steps: emit(
                 {"type": "steps", "steps": [ir.step_to_dict(step) for step in steps]}
             ),

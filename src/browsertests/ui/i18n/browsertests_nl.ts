@@ -4,92 +4,92 @@
 <context>
     <name>EnvironmentDialog</name>
     <message>
-        <location filename="../dialogs.py" line="240"/>
+        <location filename="../dialogs.py" line="269"/>
         <source>Edit environment</source>
         <translation>Omgeving bewerken</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="240"/>
+        <location filename="../dialogs.py" line="269"/>
         <source>New environment</source>
         <translation>Nieuwe omgeving</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="241"/>
+        <location filename="../dialogs.py" line="270"/>
         <source>Tests store paths, not full URLs, so the same test runs against every environment.</source>
         <translation>Tests bewaren paden, geen volledige URL&apos;s, dus dezelfde test draait op elke omgeving.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="249"/>
+        <location filename="../dialogs.py" line="278"/>
         <source>Allow destructive tests (orders, e-mails, payments)</source>
         <translation>Destructieve tests toestaan (bestellingen, e-mails, betalingen)</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="265"/>
+        <location filename="../dialogs.py" line="294"/>
         <source>Ignore HTTPS certificate errors</source>
         <translation>HTTPS-certificaatfouten negeren</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="271"/>
+        <location filename="../dialogs.py" line="300"/>
         <source>Name</source>
         <translation>Naam</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="273"/>
+        <location filename="../dialogs.py" line="302"/>
         <source>Base URL</source>
         <translation>Basis-URL</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="276"/>
+        <location filename="../dialogs.py" line="305"/>
         <source>With or without a trailing slash, both work.</source>
         <translation>Met of zonder slash aan het eind, beide werken.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="279"/>
+        <location filename="../dialogs.py" line="308"/>
         <source>Only staging allows destructive tests by default.</source>
         <translation>Alleen staging staat standaard destructieve tests toe.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="282"/>
+        <location filename="../dialogs.py" line="311"/>
         <source>Locale</source>
         <translation>Taalinstelling</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="283"/>
+        <location filename="../dialogs.py" line="312"/>
         <source>Timezone</source>
         <translation>Tijdzone</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="286"/>
+        <location filename="../dialogs.py" line="315"/>
         <source>Cookies</source>
         <translation>Cookies</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="290"/>
+        <location filename="../dialogs.py" line="319"/>
         <source>Set before every test, e.g. a consent cookie so the cookie banner never appears. Separate cookies with a semicolon.</source>
         <translation>Worden vóór elke test gezet, bijv. een consent-cookie zodat de cookiebanner nooit verschijnt. Scheid cookies met een puntkomma.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="295"/>
+        <location filename="../dialogs.py" line="324"/>
         <source>Basic auth secret</source>
         <translation>Secret voor basic auth</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="298"/>
+        <location filename="../dialogs.py" line="327"/>
         <source>Name of a secret holding user:password, for HTTP basic auth on staging.</source>
         <translation>Naam van een secret met gebruiker:wachtwoord, voor HTTP basic auth op staging.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="301"/>
+        <location filename="../dialogs.py" line="330"/>
         <source>Save environment</source>
         <translation>Omgeving opslaan</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="305"/>
+        <location filename="../dialogs.py" line="334"/>
         <source>An environment needs a name.</source>
         <translation>Een omgeving heeft een naam nodig.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="307"/>
+        <location filename="../dialogs.py" line="336"/>
         <source>The base URL must start with http:// or https://.</source>
         <translation>De basis-URL moet beginnen met http:// of https://.</translation>
     </message>
@@ -105,7 +105,7 @@
 <context>
     <name>FormDialog</name>
     <message>
-        <location filename="../dialogs.py" line="108"/>
+        <location filename="../dialogs.py" line="110"/>
         <source>Cancel</source>
         <translation>Annuleren</translation>
     </message>
@@ -113,37 +113,37 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../main_window.py" line="74"/>
+        <location filename="../main_window.py" line="81"/>
         <source>PROJECTS</source>
         <translation>PROJECTEN</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="79"/>
+        <location filename="../main_window.py" line="86"/>
         <source>New project</source>
         <translation>Nieuw project</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="83"/>
+        <location filename="../main_window.py" line="90"/>
         <source>Settings</source>
         <translation>Instellingen</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="128"/>
+        <location filename="../main_window.py" line="135"/>
         <source>Project</source>
         <translation>Project</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="128"/>
+        <location filename="../main_window.py" line="135"/>
         <source>Another project already uses this slug.</source>
         <translation>Een ander project gebruikt deze slug al.</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="138"/>
+        <location filename="../main_window.py" line="145"/>
         <source>Delete project</source>
         <translation>Project verwijderen</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="139"/>
+        <location filename="../main_window.py" line="146"/>
         <source>Delete {name} with all its environments, tests and runs?</source>
         <translation>{name} verwijderen, met alle omgevingen, tests en runs?</translation>
     </message>
@@ -151,87 +151,117 @@
 <context>
     <name>ProjectDialog</name>
     <message>
-        <location filename="../dialogs.py" line="155"/>
+        <location filename="../dialogs.py" line="157"/>
         <source>Edit project</source>
         <translation>Project bewerken</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="155"/>
+        <location filename="../dialogs.py" line="157"/>
         <source>New project</source>
         <translation>Nieuw project</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="156"/>
+        <location filename="../dialogs.py" line="158"/>
         <source>A project groups the environments and tests of one website or application.</source>
         <translation>Een project bundelt de omgevingen en tests van één website of applicatie.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="160"/>
+        <location filename="../dialogs.py" line="162"/>
         <source>e.g. ComfyConsole</source>
         <translation>bijv. ComfyConsole</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="167"/>
+        <location filename="../dialogs.py" line="169"/>
         <source>Name</source>
         <translation>Naam</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="169"/>
+        <location filename="../dialogs.py" line="171"/>
         <source>Slug</source>
         <translation>Slug</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="172"/>
+        <location filename="../dialogs.py" line="174"/>
         <source>Used on the command line: browsertests run --project &lt;slug&gt;.</source>
         <translation>Gebruikt op de command line: browsertests run --project &lt;slug&gt;.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="175"/>
+        <location filename="../dialogs.py" line="177"/>
         <source>Test attributes</source>
         <translation>Testattributen</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="179"/>
-        <source>Attributes developers put on elements for tests, most preferred first. The defaults cover the common conventions (Cypress, Laravel Dusk, Livewire, form field names); ids, labels and roles are always used as well.</source>
-        <translation>Attributen die developers voor tests op elementen zetten, de meest gewenste eerst. De standaardwaarden dekken de gangbare conventies (Cypress, Laravel Dusk, Livewire, veldnamen); id&apos;s, labels en rollen worden altijd ook gebruikt.</translation>
+        <location filename="../dialogs.py" line="181"/>
+        <source>Attributes developers put on elements for tests, most preferred first. The defaults cover the common conventions (Cypress, Laravel Dusk, Livewire, form field names).</source>
+        <translation>Attributen die developers voor tests op elementen zetten, de meest gewenste eerst. De standaardwaarden dekken de gangbare conventies (Cypress, Laravel Dusk, Livewire, veldnamen).</translation>
+    </message>
+    <message>
+        <location filename="../dialogs.py" line="187"/>
+        <source>id</source>
+        <translation>id</translation>
     </message>
     <message>
         <location filename="../dialogs.py" line="188"/>
+        <source>label</source>
+        <translation>label</translation>
+    </message>
+    <message>
+        <location filename="../dialogs.py" line="189"/>
+        <source>role and name</source>
+        <translation>rol en naam</translation>
+    </message>
+    <message>
+        <location filename="../dialogs.py" line="190"/>
+        <source>placeholder</source>
+        <translation>placeholder</translation>
+    </message>
+    <message>
+        <location filename="../dialogs.py" line="204"/>
+        <source>Also select by</source>
+        <translation>Ook selecteren op</translation>
+    </message>
+    <message>
+        <location filename="../dialogs.py" line="208"/>
+        <source>Used after the test attributes, in this order. A CSS path is always kept as the last resort. Applies to new recordings.</source>
+        <translation>Na de testattributen, in deze volgorde. Een CSS-pad blijft altijd als laatste redmiddel. Geldt voor nieuwe opnames.</translation>
+    </message>
+    <message>
+        <location filename="../dialogs.py" line="216"/>
         <source>Setup test</source>
         <translation>Setup-test</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="192"/>
+        <location filename="../dialogs.py" line="220"/>
         <source>Runs before every test in the same browser, e.g. accepting the cookie banner.</source>
         <translation>Draait vóór elke test in dezelfde browser, bijv. het accepteren van de cookiebanner.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="196"/>
+        <location filename="../dialogs.py" line="224"/>
         <source>Login test</source>
         <translation>Login-test</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="200"/>
+        <location filename="../dialogs.py" line="228"/>
         <source>Runs once before a run; every test then starts logged in with its session.</source>
         <translation>Draait één keer vóór een run; elke test start daarna ingelogd met die sessie.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="203"/>
+        <location filename="../dialogs.py" line="231"/>
         <source>Save project</source>
         <translation>Project opslaan</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="207"/>
+        <location filename="../dialogs.py" line="235"/>
         <source>None</source>
         <translation>Geen</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="216"/>
+        <location filename="../dialogs.py" line="244"/>
         <source>A project needs a name.</source>
         <translation>Een project heeft een naam nodig.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="218"/>
+        <location filename="../dialogs.py" line="246"/>
         <source>The slug may only contain lowercase letters, digits and dashes.</source>
         <translation>De slug mag alleen kleine letters, cijfers en streepjes bevatten.</translation>
     </message>
@@ -425,8 +455,8 @@
     </message>
     <message>
         <location filename="../project_view.py" line="331"/>
-        <location filename="../project_view.py" line="445"/>
-        <location filename="../project_view.py" line="452"/>
+        <location filename="../project_view.py" line="446"/>
+        <location filename="../project_view.py" line="453"/>
         <source>Environment</source>
         <translation>Omgeving</translation>
     </message>
@@ -446,28 +476,28 @@
         <translation>Deze omgeving en de run-geschiedenis ervan verwijderen?</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="367"/>
+        <location filename="../project_view.py" line="368"/>
         <source>Record</source>
         <translation>Opnemen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="367"/>
-        <location filename="../project_view.py" line="445"/>
+        <location filename="../project_view.py" line="368"/>
+        <location filename="../project_view.py" line="446"/>
         <source>Add an environment to this project first.</source>
         <translation>Voeg eerst een omgeving aan dit project toe.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="431"/>
+        <location filename="../project_view.py" line="432"/>
         <source>Delete test</source>
         <translation>Test verwijderen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="431"/>
+        <location filename="../project_view.py" line="432"/>
         <source>Delete {name}?</source>
         <translation>{name} verwijderen?</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="452"/>
+        <location filename="../project_view.py" line="453"/>
         <source>Run against</source>
         <translation>Draaien op</translation>
     </message>
@@ -475,72 +505,72 @@
 <context>
     <name>RecordSetupDialog</name>
     <message>
-        <location filename="../dialogs.py" line="333"/>
+        <location filename="../dialogs.py" line="362"/>
         <source>Record a new test</source>
         <translation>Nieuwe test opnemen</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="334"/>
+        <location filename="../dialogs.py" line="363"/>
         <source>A browser opens on the start page. Everything you click and type becomes a step.</source>
         <translation>Er opent een browser op de startpagina. Alles wat je klikt en typt wordt een stap.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="337"/>
+        <location filename="../dialogs.py" line="366"/>
         <source>e.g. Guest checkout</source>
         <translation>bijv. Afrekenen als gast</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="346"/>
+        <location filename="../dialogs.py" line="375"/>
         <source>Desktop, full screen</source>
         <translation>Desktop, volledig scherm</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="350"/>
+        <location filename="../dialogs.py" line="379"/>
         <source>Name</source>
         <translation>Naam</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="351"/>
+        <location filename="../dialogs.py" line="380"/>
         <source>Environment</source>
         <translation>Omgeving</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="353"/>
+        <location filename="../dialogs.py" line="382"/>
         <source>Device</source>
         <translation>Apparaat</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="357"/>
+        <location filename="../dialogs.py" line="386"/>
         <source>Full screen opens a normal browser window that the page follows. A fixed size or a mobile device is shown inside the app, centred in a device frame, and the test replays at that size.</source>
         <translation>Volledig scherm opent een gewoon browservenster dat de pagina volgt. Een vast formaat of een mobiel apparaat wordt in de app getoond, gecentreerd in een toestelframe, en de test speelt op dat formaat af.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="361"/>
+        <location filename="../dialogs.py" line="390"/>
         <source>Start path</source>
         <translation>Startpad</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="363"/>
+        <location filename="../dialogs.py" line="392"/>
         <source>Tags</source>
         <translation>Tags</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="366"/>
+        <location filename="../dialogs.py" line="395"/>
         <source>Comma separated. Ticket keys such as CINF-19 are recognised.</source>
         <translation>Kommagescheiden. Ticketnummers zoals CINF-19 worden herkend.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="368"/>
+        <location filename="../dialogs.py" line="397"/>
         <source>Start recording</source>
         <translation>Opname starten</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="372"/>
+        <location filename="../dialogs.py" line="401"/>
         <source>A test needs a name.</source>
         <translation>Een test heeft een naam nodig.</translation>
     </message>
     <message>
-        <location filename="../dialogs.py" line="374"/>
+        <location filename="../dialogs.py" line="403"/>
         <source>Add an environment to this project first.</source>
         <translation>Voeg eerst een omgeving aan dit project toe.</translation>
     </message>
@@ -739,37 +769,37 @@
         <translation>{count} stappen, {attention} vragen aandacht.</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="213"/>
+        <location filename="../test_editor.py" line="214"/>
         <source>This test is marked destructive and {environment} does not allow destructive tests.</source>
         <translation>Deze test is als destructief gemarkeerd en {environment} staat geen destructieve tests toe.</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="226"/>
+        <location filename="../test_editor.py" line="227"/>
         <source>Verifying selectors…</source>
         <translation>Selectors controleren…</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="235"/>
+        <location filename="../test_editor.py" line="236"/>
         <source>Verifying step {step}…</source>
         <translation>Stap {step} controleren…</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="239"/>
+        <location filename="../test_editor.py" line="240"/>
         <source>Verification failed: {message}</source>
         <translation>Controle mislukt: {message}</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="249"/>
+        <location filename="../test_editor.py" line="250"/>
         <source>Verification stopped at step {step}: {message}</source>
         <translation>Controle gestopt bij stap {step}: {message}</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="254"/>
+        <location filename="../test_editor.py" line="255"/>
         <source>All steps replayed; selectors verified.</source>
         <translation>Alle stappen afgespeeld; selectors gecontroleerd.</translation>
     </message>
     <message>
-        <location filename="../test_editor.py" line="258"/>
+        <location filename="../test_editor.py" line="259"/>
         <source>A test needs a name.</source>
         <translation>Een test heeft een naam nodig.</translation>
     </message>
@@ -978,108 +1008,108 @@
 <context>
     <name>StepDialog</name>
     <message>
-        <location filename="../step_dialog.py" line="47"/>
+        <location filename="../step_dialog.py" line="49"/>
         <source>Edit step</source>
         <translation>Stap bewerken</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="48"/>
+        <location filename="../step_dialog.py" line="50"/>
         <source>The first selector is tried first; the others are fallbacks, in order.</source>
         <translation>De eerste selector wordt eerst geprobeerd; de andere zijn reserves, op volgorde.</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="51"/>
+        <location filename="../step_dialog.py" line="53"/>
         <source>Recorded as: {raw}</source>
         <translation>Opgenomen als: {raw}</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="59"/>
+        <location filename="../step_dialog.py" line="61"/>
         <source>Action</source>
         <translation>Actie</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="63"/>
+        <location filename="../step_dialog.py" line="65"/>
         <source>Path or URL</source>
         <translation>Pad of URL</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="70"/>
+        <location filename="../step_dialog.py" line="72"/>
         <source>Insert variable</source>
         <translation>Variabele invoegen</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="80"/>
+        <location filename="../step_dialog.py" line="82"/>
         <source>Value</source>
         <translation>Waarde</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="82"/>
+        <location filename="../step_dialog.py" line="84"/>
         <source>Expect the element to be checked</source>
         <translation>Verwacht dat het element aangevinkt is</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="90"/>
+        <location filename="../step_dialog.py" line="92"/>
         <source>default (10 s)</source>
         <translation>standaard (10 s)</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="92"/>
+        <location filename="../step_dialog.py" line="94"/>
         <source>Wait at most</source>
         <translation>Maximaal wachten</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="101"/>
+        <location filename="../step_dialog.py" line="103"/>
         <source>Make primary</source>
         <translation>Primair maken</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="102"/>
+        <location filename="../step_dialog.py" line="104"/>
         <source>Up</source>
         <translation>Omhoog</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="103"/>
+        <location filename="../step_dialog.py" line="105"/>
         <source>Down</source>
         <translation>Omlaag</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="104"/>
+        <location filename="../step_dialog.py" line="106"/>
         <source>Remove</source>
         <translation>Verwijderen</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="106"/>
-        <location filename="../step_dialog.py" line="186"/>
+        <location filename="../step_dialog.py" line="108"/>
+        <location filename="../step_dialog.py" line="188"/>
         <source>Add CSS selector</source>
         <translation>CSS-selector toevoegen</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="107"/>
+        <location filename="../step_dialog.py" line="109"/>
         <source>Selectors</source>
         <translation>Selectors</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="111"/>
+        <location filename="../step_dialog.py" line="113"/>
         <source>Clear the attention note: {note}</source>
         <translation>Aandachtspunt wissen: {note}</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="115"/>
+        <location filename="../step_dialog.py" line="117"/>
         <source>Apply</source>
         <translation>Toepassen</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="154"/>
+        <location filename="../step_dialog.py" line="156"/>
         <source>primary</source>
         <translation>primair</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="154"/>
+        <location filename="../step_dialog.py" line="156"/>
         <source>fallback {number}</source>
         <translation>reserve {number}</translation>
     </message>
     <message>
-        <location filename="../step_dialog.py" line="186"/>
+        <location filename="../step_dialog.py" line="188"/>
         <source>CSS selector</source>
         <translation>CSS-selector</translation>
     </message>

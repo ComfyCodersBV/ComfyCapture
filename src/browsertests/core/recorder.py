@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterable
 from importlib import resources
 from typing import TYPE_CHECKING, Any
 
-from browsertests.core.models import Step
+from browsertests.core.models import SelectorKind, Step
 from browsertests.core.sanitizer import RecordedEvent, StepBuilder
 
 if TYPE_CHECKING:
@@ -29,9 +29,12 @@ class Recorder:
         steps: Iterable[Step] = (),
         on_change: Callable[[tuple[Step, ...]], None] | None = None,
         toolbar: bool = True,
+        selector_kinds: Iterable[SelectorKind] | None = None,
     ) -> None:
         self._context = context
-        self._builder = StepBuilder(base_url, test_id_attributes, mobile=mobile, steps=steps)
+        self._builder = StepBuilder(
+            base_url, test_id_attributes, mobile=mobile, steps=steps, selector_kinds=selector_kinds
+        )
         self._on_change = on_change
         self._pages: list[Page] = []
         self._config = {"testIdAttributes": list(test_id_attributes), "toolbar": toolbar}

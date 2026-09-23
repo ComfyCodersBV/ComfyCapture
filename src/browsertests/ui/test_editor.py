@@ -183,6 +183,7 @@ class ReviewDialog(QDialog):
             environment=self._environment.config,
             steps=tuple(self._steps[:keep]),
             viewer=not self._test.device.fullscreen,
+            selector_kinds=self._project.selector_kinds,
         )
         recording = RecordingDialog(payload.to_dict(), self)
         if recording.exec() != QDialog.DialogCode.Accepted:

@@ -18,11 +18,13 @@ from browsertests.core import ir
 from browsertests.core.db import EnvironmentRepository
 from browsertests.core.models import (
     DEFAULT_TEST_ID_ATTRIBUTES,
+    OPTIONAL_SELECTOR_KINDS,
     Device,
     DeviceKind,
     Environment,
     EnvironmentConfig,
     Project,
+    SelectorKind,
     StoredTest,
 )
 from browsertests.ui.icons import icon
@@ -177,8 +179,34 @@ class ProjectDialog(FormDialog):
             required=False,
             help_text=self.tr(
                 "Attributes developers put on elements for tests, most preferred first. The defaults cover "
-                "the common conventions (Cypress, Laravel Dusk, Livewire, form field names); ids, labels "
-                "and roles are always used as well."
+                "the common conventions (Cypress, Laravel Dusk, Livewire, form field names)."
+            ),
+        )
+        enabled = project.selector_kinds if project else OPTIONAL_SELECTOR_KINDS
+        labels = {
+            SelectorKind.ID: self.tr("id"),
+            SelectorKind.LABEL: self.tr("label"),
+            SelectorKind.ROLE: self.tr("role and name"),
+            SelectorKind.PLACEHOLDER: self.tr("placeholder"),
+        }
+        kinds_row = QWidget()
+        kinds_layout = QHBoxLayout(kinds_row)
+        kinds_layout.setContentsMargins(0, 0, 0, 0)
+        kinds_layout.setSpacing(16)
+        self.kind_boxes: dict[SelectorKind, QCheckBox] = {}
+        for kind in OPTIONAL_SELECTOR_KINDS:
+            box = QCheckBox(labels[kind])
+            box.setChecked(kind in enabled)
+            self.kind_boxes[kind] = box
+            kinds_layout.addWidget(box)
+        kinds_layout.addStretch()
+        self.add_field(
+            self.tr("Also select by"),
+            kinds_row,
+            required=False,
+            help_text=self.tr(
+                "Used after the test attributes, in this order. A CSS path is always kept as the last "
+                "resort. Applies to new recordings."
             ),
         )
         self.setup_test = self._test_choice(tests or [], project.setup_test_uuid if project else None)
@@ -228,6 +256,7 @@ class ProjectDialog(FormDialog):
             created_at=self._project.created_at if self._project else "",
             setup_test_uuid=self.setup_test.currentData(),
             login_test_uuid=self.login_test.currentData(),
+            selector_kinds=tuple(kind for kind, box in self.kind_boxes.items() if box.isChecked()),
         )
 
 
