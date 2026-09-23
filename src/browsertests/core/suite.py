@@ -8,7 +8,9 @@ that passes on a retry is flaky. A trace and a screenshot are kept only for a fi
 from __future__ import annotations
 
 import contextlib
+import queue
 import shutil
+import threading
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
@@ -27,6 +29,7 @@ if TYPE_CHECKING:
     from browsertests.core.db import RunRepository
 
 DEFAULT_RETRIES = 1
+DEFAULT_WORKERS = 2
 RETENTION_DAYS = 14
 
 Emit = Callable[[dict[str, Any]], None]
@@ -47,6 +50,7 @@ class SuitePlan:
     headed: bool = False
     retries: int = DEFAULT_RETRIES
     timeout_ms: int = runner.DEFAULT_TIMEOUT_MS
+    workers: int = DEFAULT_WORKERS
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,7 +129,14 @@ class SuiteRunner:
     def __init__(self, plan: SuitePlan, resolver: runner.VariableResolver, emit: Emit | None = None) -> None:
         self._plan = plan
         self._resolver = resolver
-        self._emit = emit or (lambda _message: None)
+        self._lock = threading.Lock()
+        target = emit or (lambda _message: None)
+
+        def locked(message: dict[str, Any]) -> None:
+            with self._lock:
+                target(message)
+
+        self._emit = locked
         self.browser_version = ""
 
     def run(self) -> list[TestResult]:
@@ -135,22 +146,53 @@ class SuiteRunner:
         if missing:
             raise ConfigurationError(" ".join(missing))
 
-        results: list[TestResult] = []
+        storage = None
+        if self._plan.login is not None:
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=not self._plan.headed)
+                try:
+                    storage = self._login(playwright, browser)
+                except ConfigurationError as error:
+                    return [self._error(stored, str(error)) for stored in self._plan.tests]
+                finally:
+                    browser.close()
+
+        pending: queue.Queue[tuple[int, StoredTest]] = queue.Queue()
+        for index, stored in enumerate(self._plan.tests):
+            pending.put((index, stored))
+        results: dict[int, TestResult] = {}
+        workers = max(1, min(self._plan.workers, len(self._plan.tests)))
+        threads = [
+            threading.Thread(target=self._work, args=(pending, results, storage)) for _ in range(workers)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        return [results[index] for index in range(len(self._plan.tests))]
+
+    def _work(
+        self, pending: queue.Queue[tuple[int, StoredTest]], results: dict[int, TestResult], storage: Any
+    ) -> None:
+        from playwright.sync_api import sync_playwright
+
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=not self._plan.headed)
             self.browser_version = browser.version
-            try:
-                storage = self._login(playwright, browser)
-            except ConfigurationError as error:
-                browser.close()
-                return [self._error(stored, str(error)) for stored in self._plan.tests]
-            for stored in self._plan.tests:
+            while True:
+                try:
+                    index, stored = pending.get_nowait()
+                except queue.Empty:
+                    break
                 self._emit({"type": "test_started", "test": stored.test.id, "name": stored.test.name})
-                result = self._run_test(playwright, browser, stored, storage)
+                try:
+                    result = self._run_test(playwright, browser, stored, storage)
+                except Exception as error:
+                    result = self._error(stored, runner.first_line(str(error)))
+                with self._lock:
+                    results[index] = result
                 self._emit({"type": "test_finished", "result": result.to_dict()})
-                results.append(result)
             browser.close()
-        return results
 
     def _context(
         self, playwright: Playwright, browser: Browser, stored: StoredTest, storage: Any

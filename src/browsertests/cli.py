@@ -31,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--tag", action="append", default=[], help="only tests with this tag (repeatable, ANDs)")
     run.add_argument("--headed", action="store_true", help="show the browser")
     run.add_argument("--retries", type=int, default=None, help="retries for a failing test (default 1)")
+    run.add_argument("--workers", type=int, default=None, help="tests in parallel (default 2)")
     run.add_argument("--jsonl", action="store_true", help="machine-readable JSON lines on stdout")
 
     exporting = commands.add_parser("export", help="export tests as JSON files, one per test")
@@ -128,6 +129,7 @@ def command_run(arguments: argparse.Namespace) -> int:
         login=tests.by_uuid(project.login_test_uuid) if project.login_test_uuid else None,
         headed=arguments.headed,
         retries=suite.DEFAULT_RETRIES if arguments.retries is None else arguments.retries,
+        workers=suite.DEFAULT_WORKERS if arguments.workers is None else arguments.workers,
     )
     variables = db.VariableRepository(connection).values(project.id)
     resolver = runner.VariableResolver(variables, SecretStore(project.slug).get)

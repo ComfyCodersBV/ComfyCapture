@@ -87,3 +87,18 @@ def test_selector_kinds_round_trip(connection) -> None:
     saved = projects.save(Project(None, "lean", "Lean", selector_kinds=(SelectorKind.LABEL,)))
 
     assert projects.get(saved.id).selector_kinds == (SelectorKind.LABEL,)
+
+
+def test_secrets_come_from_environment_then_file(tmp_path) -> None:
+    from browsertests.core.secrets import SecretStore
+
+    secrets = tmp_path / "secrets.env"
+    secrets.write_text(
+        "# server secrets\nBROWSERTESTS_SECRET_ADMIN_PASSWORD='from-file'\nBROWSERTESTS_SECRET_VOUCHER=abc\n"
+    )
+    environ = {"BROWSERTESTS_SECRETS_FILE": str(secrets), "BROWSERTESTS_SECRET_VOUCHER": "from-env"}
+    store = SecretStore("shop", environ=environ, use_keyring=False)
+
+    assert store.get("admin_password") == "from-file"
+    assert store.get("voucher") == "from-env"
+    assert store.get("missing") is None

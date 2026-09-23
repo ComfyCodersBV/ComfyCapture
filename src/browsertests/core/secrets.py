@@ -1,7 +1,9 @@
 """The only module that reads credentials.
 
 Desktop: the OS keyring, service `BrowsertestSuite/<project slug>`. Server: environment variables
-`BROWSERTESTS_SECRET_<NAME>` (upper-cased, non-alphanumerics as `_`), which win over the keyring.
+`BROWSERTESTS_SECRET_<NAME>` (upper-cased, non-alphanumerics as `_`), or a file named by
+`BROWSERTESTS_SECRETS_FILE` with `BROWSERTESTS_SECRET_<NAME>=value` lines. Environment beats file beats
+keyring.
 """
 
 from __future__ import annotations
@@ -9,12 +11,31 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Mapping
+from pathlib import Path
 
 SERVICE_PREFIX = "BrowsertestSuite"
 
 
+SECRETS_FILE_VARIABLE = "BROWSERTESTS_SECRETS_FILE"
+
+
 def environment_key(name: str) -> str:
     return "BROWSERTESTS_SECRET_" + re.sub(r"[^A-Za-z0-9]", "_", name).upper()
+
+
+def read_secrets_file(path: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    try:
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return values
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
 
 
 class SecretStore:
@@ -26,9 +47,15 @@ class SecretStore:
         self._use_keyring = use_keyring
 
     def get(self, name: str) -> str | None:
-        value = self._environ.get(environment_key(name))
+        key = environment_key(name)
+        value = self._environ.get(key)
         if value is not None:
             return value
+        secrets_file = self._environ.get(SECRETS_FILE_VARIABLE)
+        if secrets_file:
+            value = read_secrets_file(secrets_file).get(key)
+            if value is not None:
+                return value
         if not self._use_keyring:
             return None
         try:

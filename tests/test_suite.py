@@ -199,3 +199,14 @@ def test_runs_accept_confirm_dialogs(seeded, tmp_path: Path) -> None:
     ).run()
 
     assert result.status is RunStatus.PASSED, result.message
+
+
+def test_parallel_workers_keep_result_order(seeded, tmp_path: Path) -> None:
+    connection, project, environment, tests = seeded
+    stored = [tests.save(project.id, make(f"home {index}", NAVIGATE)) for index in range(4)]
+    plan = suite.SuitePlan(project, environment, tuple(stored), tmp_path / "artifacts", retries=0, workers=3)
+
+    results = suite.SuiteRunner(plan, runner.VariableResolver()).run()
+
+    assert [result.stored.test.name for result in results] == [f"home {index}" for index in range(4)]
+    assert all(result.status is RunStatus.PASSED for result in results)
