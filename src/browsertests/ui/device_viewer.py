@@ -4,7 +4,7 @@ import base64
 import time
 from typing import Any
 
-from PySide6.QtCore import QPointF, QRectF, QSettings, Qt, QTimer, Signal
+from PySide6.QtCore import QPointF, QRectF, QSettings, QSizeF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QColor,
     QGuiApplication,
@@ -107,7 +107,7 @@ class DeviceViewer(QWidget):
         self.command.emit({"type": "screencast_size", "width": size[0], "height": size[1]})
 
     def show_frame(self, data: str) -> None:
-        image = QImage.fromData(base64.b64decode(data), "JPEG")
+        image = QImage.fromData(base64.b64decode(data))
         if image.isNull():
             return
         image.setDevicePixelRatio(self.devicePixelRatioF())
@@ -119,13 +119,16 @@ class DeviceViewer(QWidget):
 
     def screen_rect(self) -> QRectF:
         bezel = self.bezel()
+        ratio = self.devicePixelRatioF()
         available_width = self.width() - 2 * (MARGIN + bezel)
         available_height = self.height() - 2 * (MARGIN + bezel)
         scale = min(available_width / self._css_width, available_height / self._css_height, MAX_SCALE)
         scale = max(scale, 0.1)
-        width = self._css_width * scale
-        height = self._css_height * scale
-        return QRectF((self.width() - width) / 2, (self.height() - height) / 2, width, height)
+        width = round(self._css_width * scale * ratio) / ratio
+        height = round(self._css_height * scale * ratio) / ratio
+        left = round((self.width() - width) / 2 * ratio) / ratio
+        top = round((self.height() - height) / 2 * ratio) / ratio
+        return QRectF(left, top, width, height)
 
     def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter(self)
@@ -153,7 +156,12 @@ class DeviceViewer(QWidget):
         painter.setClipPath(clip)
         painter.fillRect(screen, QColor("#ffffff"))
         if self._image is not None:
-            painter.drawImage(screen, self._image)
+            ratio = self.devicePixelRatioF()
+            natural = QSizeF(self._image.width() / ratio, self._image.height() / ratio)
+            if abs(natural.width() - screen.width()) <= 1 and abs(natural.height() - screen.height()) <= 1:
+                painter.drawImage(screen.topLeft(), self._image)
+            else:
+                painter.drawImage(screen, self._image)
         painter.end()
 
     def _css_point(self, position: QPointF) -> tuple[int, int] | None:

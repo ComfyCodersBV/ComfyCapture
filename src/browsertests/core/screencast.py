@@ -1,6 +1,6 @@
 """Headless recording shown in the desktop app.
 
-`Screencast` streams the page as JPEG frames over the DevTools protocol; `InputBridge` replays the
+`Screencast` streams the page as lossless PNG frames over the DevTools protocol; `InputBridge` replays the
 viewer's mouse, touch and keyboard input into the page. Input sent this way is trusted, so the injected
 recorder sees it exactly as it sees a user in a headed window.
 """
@@ -25,7 +25,7 @@ class Screencast:
         page: Page,
         emit: Callable[[dict[str, Any]], None],
         max_size: tuple[int, int],
-        quality: int = 92,
+        quality: int = 100,
     ) -> None:
         self._emit = emit
         self._quality = quality
@@ -38,7 +38,7 @@ class Screencast:
         self._session.send(
             "Page.startScreencast",
             {
-                "format": "jpeg",
+                "format": "png",
                 "quality": self._quality,
                 "maxWidth": self._size[0],
                 "maxHeight": self._size[1],
