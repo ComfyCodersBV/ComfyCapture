@@ -12,6 +12,27 @@ and, on a version tag, creates the GitLab release that links to the uploaded bui
 The list of expected archives is `RELEASE_TARGETS` in `.gitlab-ci.yml`; the release job fails if one is
 missing, so a release never goes out half-built.
 
+## Quick: one line per machine
+
+Needs git and a GitLab token with the `api` scope (your avatar → Preferences → Access tokens). The line
+clones the repository with that token, checks out the release tag, installs uv when missing, builds,
+smoke-tests and uploads. Replace the token and the tag.
+
+**macOS** (Terminal; the first `git` call may ask to install the Xcode command line tools):
+
+```bash
+export GITLAB_TOKEN=glpat-XXXX TAG=v0.1.0; git clone -q "https://oauth2:$GITLAB_TOKEN@gitlab.comfycoders.nl/tranquil-tools/browsertest-suite.git" ~/bt-release && cd ~/bt-release && git checkout -q $TAG && git show origin/main:packaging/release-build.sh | bash
+```
+
+**Windows** (PowerShell; install git first with `winget install Git.Git` if needed):
+
+```powershell
+$env:GITLAB_TOKEN="glpat-XXXX"; $tag="v0.1.0"; git clone -q "https://oauth2:$env:GITLAB_TOKEN@gitlab.comfycoders.nl/tranquil-tools/browsertest-suite.git" "$HOME\bt-release"; cd "$HOME\bt-release"; git checkout -q $tag; git show origin/main:packaging/release-build.ps1 | Out-File -Encoding utf8 "$env:TEMP\release-build.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\release-build.ps1"
+```
+
+Delete the `bt-release` folder afterwards: its git config contains the token. An Intel Mac builds
+`macos-x86_64`, which the release job does not expect; build on Apple Silicon.
+
 ## Once per machine
 
 1. Install git and [uv](https://docs.astral.sh/uv/getting-started/installation/):
