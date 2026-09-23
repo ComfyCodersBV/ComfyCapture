@@ -202,3 +202,15 @@ def test_step_dialog_turns_an_unknown_step_into_a_click(application) -> None:
     dialog._add_selector(Selector(SelectorKind.CSS, "#pay"))
     assert dialog.validate() is None
     assert dialog.result_step().raw is None
+
+
+def test_project_slug_is_lowercased_while_typing(application) -> None:
+    from browsertests.ui.dialogs import ProjectDialog
+
+    dialog = ProjectDialog()
+    dialog.name.setText("ComfyConsole")
+    dialog.slug.textEdited.emit("CCN Main")
+
+    assert dialog.slug.text() == "ccn-main"
+    assert dialog.validate() is None
+    assert dialog.result_project().slug == "ccn-main"

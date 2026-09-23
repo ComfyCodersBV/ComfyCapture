@@ -162,6 +162,7 @@ class ProjectDialog(FormDialog):
         self.name.setPlaceholderText(self.tr("e.g. ComfyConsole"))
         self.slug = QLineEdit(project.slug if project else "")
         self.slug.setPlaceholderText("comfyconsole")
+        self.slug.textEdited.connect(self._normalise_slug)
         attributes = project.test_id_attributes if project else DEFAULT_TEST_ID_ATTRIBUTES
         self.attributes = QLineEdit(", ".join(attributes))
         if project is None:
@@ -171,7 +172,10 @@ class ProjectDialog(FormDialog):
             self.tr("Slug"),
             self.slug,
             required=True,
-            help_text=self.tr("Used on the command line: browsertests run --project <slug>."),
+            help_text=self.tr(
+                "Used on the command line (browsertests run --project <slug>) and in folder names, so it is "
+                "kept lowercase."
+            ),
         )
         self.add_field(
             self.tr("Test attributes"),
@@ -230,6 +234,14 @@ class ProjectDialog(FormDialog):
             )
         self.finish_layout(self.tr("Save project"))
 
+    def _normalise_slug(self, text: str) -> None:
+        normalised = re.sub(r"[^a-z0-9-]+", "-", text.lower())
+        if normalised == text:
+            return
+        cursor = self.slug.cursorPosition()
+        self.slug.setText(normalised)
+        self.slug.setCursorPosition(min(cursor, len(normalised)))
+
     def _test_choice(self, tests: list[StoredTest], selected: str | None) -> QComboBox:
         choice = QComboBox()
         choice.addItem(self.tr("None"), None)
@@ -242,15 +254,15 @@ class ProjectDialog(FormDialog):
     def validate(self) -> tuple[str, QWidget] | None:
         if not self.name.text().strip():
             return self.tr("A project needs a name."), self.name
-        if not SLUG_PATTERN.fullmatch(self.slug.text().strip()):
-            return self.tr("The slug may only contain lowercase letters, digits and dashes."), self.slug
+        if not SLUG_PATTERN.fullmatch(slugify(self.slug.text())):
+            return self.tr("A project needs a slug."), self.slug
         return None
 
     def result_project(self) -> Project:
         attributes = split_list(self.attributes.text()) or DEFAULT_TEST_ID_ATTRIBUTES
         return Project(
             id=self._project.id if self._project else None,
-            slug=self.slug.text().strip(),
+            slug=slugify(self.slug.text()),
             name=self.name.text().strip(),
             test_id_attributes=attributes,
             created_at=self._project.created_at if self._project else "",
