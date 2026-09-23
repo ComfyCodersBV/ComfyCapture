@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import replace
+from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QDialog,
+    QFileDialog,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -20,7 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from browsertests.core import db, ir
+from browsertests.core import db, exchange, ir
 from browsertests.core.models import Environment, Project, StoredTest, Test
 from browsertests.core.session import SessionPayload
 from browsertests.ui import formatting
@@ -173,6 +175,7 @@ class ProjectView(QStackedWidget):
         run_selected = IconButton(self.tr("Run"), "continue", "ghost", self._run_selected)
         for button in (run_selected, review, continue_recording, delete_test):
             tests.add_action(button)
+        tests.add_action(IconButton(self.tr("Export"), "download", "ghost", self._export))
         tests.add_action(IconButton(self.tr("Run all"), "continue", "secondary", self._run_all))
         tests.add_action(IconButton(self.tr("Record new test"), "record", "primary", self._record_test))
         enable_with_selection(self.test_table, run_selected, review, continue_recording, delete_test)
@@ -305,6 +308,34 @@ class ProjectView(QStackedWidget):
             QMessageBox.information(self, self.tr("Run"), self.tr("There are no tests to run."))
             return
         self._run(tests)
+
+    def _export(self) -> None:
+        if self._project is None or self._project.id is None:
+            return
+        selected = self._selected_test()
+        tests = (
+            [selected]
+            if selected
+            else self._tests.for_project(self._project.id, split_list(self.tag_filter.text()))
+        )
+        if not tests:
+            QMessageBox.information(self, self.tr("Export"), self.tr("There are no tests to export."))
+            return
+        directory = QFileDialog.getExistingDirectory(self, self.tr("Export tests to"))
+        if not directory:
+            return
+        written = []
+        for name, text in exchange.export_tests(self._connection, self._project, tests):
+            path = Path(directory) / name
+            path.write_text(text, encoding="utf-8")
+            written.append(name)
+        QMessageBox.information(
+            self,
+            self.tr("Export"),
+            self.tr(
+                "Exported {count} tests to {directory}. Values of variables and secrets are not included."
+            ).format(count=len(written), directory=directory),
+        )
 
     def _add_environment(self) -> None:
         if self._project is None or self._project.id is None:

@@ -113,39 +113,92 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../main_window.py" line="81"/>
+        <location filename="../main_window.py" line="86"/>
         <source>PROJECTS</source>
         <translation>PROJECTEN</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="86"/>
+        <location filename="../main_window.py" line="91"/>
         <source>New project</source>
         <translation>Nieuw project</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="90"/>
+        <location filename="../main_window.py" line="95"/>
+        <location filename="../main_window.py" line="162"/>
+        <location filename="../main_window.py" line="172"/>
+        <location filename="../main_window.py" line="176"/>
+        <source>Import tests</source>
+        <translation>Tests importeren</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="98"/>
         <source>Settings</source>
         <translation>Instellingen</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="135"/>
+        <location filename="../main_window.py" line="143"/>
         <source>Project</source>
         <translation>Project</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="135"/>
+        <location filename="../main_window.py" line="143"/>
         <source>Another project already uses this slug.</source>
         <translation>Een ander project gebruikt deze slug al.</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="145"/>
+        <location filename="../main_window.py" line="153"/>
         <source>Delete project</source>
         <translation>Project verwijderen</translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="146"/>
+        <location filename="../main_window.py" line="154"/>
         <source>Delete {name} with all its environments, tests and runs?</source>
         <translation>{name} verwijderen, met alle omgevingen, tests en runs?</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="162"/>
+        <source>Exported tests (*.json)</source>
+        <translation>Geëxporteerde tests (*.json)</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="180"/>
+        <source>Project {name}</source>
+        <translation>Project {name}</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="182"/>
+        <source>Added tests: {items}</source>
+        <translation>Toegevoegde tests: {items}</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="183"/>
+        <source>Updated tests: {items}</source>
+        <translation>Bijgewerkte tests: {items}</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="184"/>
+        <source>Added environments: {items}</source>
+        <translation>Toegevoegde omgevingen: {items}</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="185"/>
+        <source>Fill in these variables: {items}</source>
+        <translation>Vul deze variabelen in: {items}</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="186"/>
+        <source>Add these secrets: {items}</source>
+        <translation>Voeg deze secrets toe: {items}</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="187"/>
+        <source>Setup or login tests that were not imported: {items}</source>
+        <translation>Setup- of login-tests die niet zijn geïmporteerd: {items}</translation>
+    </message>
+    <message>
+        <location filename="../main_window.py" line="193"/>
+        <source>Runs refuse to start until the missing items are supplied.</source>
+        <translation>Runs starten pas als de ontbrekende onderdelen zijn aangevuld.</translation>
     </message>
 </context>
 <context>
@@ -269,235 +322,257 @@
 <context>
     <name>ProjectView</name>
     <message>
-        <location filename="../project_view.py" line="91"/>
+        <location filename="../project_view.py" line="93"/>
         <source>Record your first browser test</source>
         <translation>Neem je eerste browsertest op</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="95"/>
+        <location filename="../project_view.py" line="97"/>
         <source>Create a project for a website, add the environments it runs on, then record a test.</source>
         <translation>Maak een project voor een website, voeg de omgevingen toe waarop die draait en neem dan een test op.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="103"/>
+        <location filename="../project_view.py" line="105"/>
         <source>Create a project</source>
         <translation>Project aanmaken</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="128"/>
+        <location filename="../project_view.py" line="130"/>
         <source>Variables</source>
         <translation>Variabelen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="129"/>
-        <location filename="../project_view.py" line="140"/>
+        <location filename="../project_view.py" line="131"/>
+        <location filename="../project_view.py" line="142"/>
         <source>Edit</source>
         <translation>Bewerken</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="130"/>
-        <location filename="../project_view.py" line="141"/>
-        <location filename="../project_view.py" line="172"/>
+        <location filename="../project_view.py" line="132"/>
+        <location filename="../project_view.py" line="143"/>
+        <location filename="../project_view.py" line="174"/>
         <source>Delete</source>
         <translation>Verwijderen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="134"/>
+        <location filename="../project_view.py" line="136"/>
         <source>Environments</source>
         <translation>Omgevingen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="134"/>
+        <location filename="../project_view.py" line="136"/>
         <source>Where the tests run, e.g. staging and production.</source>
         <translation>Waar de tests draaien, bijv. staging en productie.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="137"/>
+        <location filename="../project_view.py" line="139"/>
         <source>Name</source>
         <translation>Naam</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="137"/>
+        <location filename="../project_view.py" line="139"/>
         <source>Base URL</source>
         <translation>Basis-URL</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="137"/>
+        <location filename="../project_view.py" line="139"/>
         <source>Destructive tests</source>
         <translation>Destructieve tests</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="145"/>
+        <location filename="../project_view.py" line="147"/>
         <source>Add environment</source>
         <translation>Omgeving toevoegen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="148"/>
+        <location filename="../project_view.py" line="150"/>
         <source>No environments yet. Add one to start recording.</source>
         <translation>Nog geen omgevingen. Voeg er een toe om te kunnen opnemen.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="153"/>
+        <location filename="../project_view.py" line="155"/>
         <source>Tests</source>
         <translation>Tests</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="153"/>
+        <location filename="../project_view.py" line="155"/>
         <source>Recorded tests. Double-click a test to review it.</source>
         <translation>Opgenomen tests. Dubbelklik op een test om hem te bekijken.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="157"/>
+        <location filename="../project_view.py" line="159"/>
         <source>Test</source>
         <translation>Test</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="158"/>
+        <location filename="../project_view.py" line="160"/>
         <source>Last run</source>
         <translation>Laatste run</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="159"/>
+        <location filename="../project_view.py" line="161"/>
         <source>Device</source>
         <translation>Apparaat</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="160"/>
+        <location filename="../project_view.py" line="162"/>
         <source>Tags</source>
         <translation>Tags</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="161"/>
+        <location filename="../project_view.py" line="163"/>
         <source>Steps</source>
         <translation>Stappen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="162"/>
+        <location filename="../project_view.py" line="164"/>
         <source>Updated</source>
         <translation>Bijgewerkt</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="168"/>
+        <location filename="../project_view.py" line="170"/>
         <source>Review</source>
         <translation>Bekijken</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="170"/>
+        <location filename="../project_view.py" line="172"/>
         <source>Continue recording</source>
         <translation>Verder opnemen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="173"/>
-        <location filename="../project_view.py" line="305"/>
+        <location filename="../project_view.py" line="175"/>
+        <location filename="../project_view.py" line="308"/>
         <source>Run</source>
         <translation>Draaien</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="176"/>
+        <location filename="../project_view.py" line="178"/>
+        <location filename="../project_view.py" line="322"/>
+        <location filename="../project_view.py" line="334"/>
+        <source>Export</source>
+        <translation>Exporteren</translation>
+    </message>
+    <message>
+        <location filename="../project_view.py" line="179"/>
         <source>Run all</source>
         <translation>Alles draaien</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="177"/>
+        <location filename="../project_view.py" line="180"/>
         <source>Record new test</source>
         <translation>Nieuwe test opnemen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="180"/>
+        <location filename="../project_view.py" line="183"/>
         <source>Filter by tags, e.g. CINF-19, checkout</source>
         <translation>Filter op tags, bijv. CINF-19, checkout</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="184"/>
-        <location filename="../project_view.py" line="264"/>
+        <location filename="../project_view.py" line="187"/>
+        <location filename="../project_view.py" line="267"/>
         <source>No tests yet. Record one with the button above.</source>
         <translation>Nog geen tests. Neem er een op met de knop hierboven.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="203"/>
+        <location filename="../project_view.py" line="206"/>
         <source>Slug {slug}  ·  test attributes: {attributes}</source>
         <translation>Slug {slug}  ·  testattributen: {attributes}</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="219"/>
+        <location filename="../project_view.py" line="222"/>
         <source>Allowed</source>
         <translation>Toegestaan</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="219"/>
+        <location filename="../project_view.py" line="222"/>
         <source>Refused</source>
         <translation>Geweigerd</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="247"/>
+        <location filename="../project_view.py" line="250"/>
         <source>Never run</source>
         <translation>Nog nooit gedraaid</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="262"/>
+        <location filename="../project_view.py" line="265"/>
         <source>No tests match these tags.</source>
         <translation>Geen tests met deze tags.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="276"/>
+        <location filename="../project_view.py" line="279"/>
         <source>setup</source>
         <translation>setup</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="278"/>
+        <location filename="../project_view.py" line="281"/>
         <source>login</source>
         <translation>login</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="305"/>
+        <location filename="../project_view.py" line="308"/>
         <source>There are no tests to run.</source>
         <translation>Er zijn geen tests om te draaien.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="331"/>
-        <location filename="../project_view.py" line="446"/>
-        <location filename="../project_view.py" line="453"/>
+        <location filename="../project_view.py" line="322"/>
+        <source>There are no tests to export.</source>
+        <translation>Er zijn geen tests om te exporteren.</translation>
+    </message>
+    <message>
+        <location filename="../project_view.py" line="324"/>
+        <source>Export tests to</source>
+        <translation>Tests exporteren naar</translation>
+    </message>
+    <message>
+        <location filename="../project_view.py" line="336"/>
+        <source>Exported {count} tests to {directory}. Values of variables and secrets are not included.</source>
+        <translation>{count} tests geëxporteerd naar {directory}. Waarden van variabelen en secrets zitten er niet in.</translation>
+    </message>
+    <message>
+        <location filename="../project_view.py" line="362"/>
+        <location filename="../project_view.py" line="477"/>
+        <location filename="../project_view.py" line="484"/>
         <source>Environment</source>
         <translation>Omgeving</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="332"/>
+        <location filename="../project_view.py" line="363"/>
         <source>This project already has an environment with that name.</source>
         <translation>Dit project heeft al een omgeving met die naam.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="341"/>
+        <location filename="../project_view.py" line="372"/>
         <source>Delete environment</source>
         <translation>Omgeving verwijderen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="341"/>
+        <location filename="../project_view.py" line="372"/>
         <source>Delete this environment and its run history?</source>
         <translation>Deze omgeving en de run-geschiedenis ervan verwijderen?</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="368"/>
+        <location filename="../project_view.py" line="399"/>
         <source>Record</source>
         <translation>Opnemen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="368"/>
-        <location filename="../project_view.py" line="446"/>
+        <location filename="../project_view.py" line="399"/>
+        <location filename="../project_view.py" line="477"/>
         <source>Add an environment to this project first.</source>
         <translation>Voeg eerst een omgeving aan dit project toe.</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="432"/>
+        <location filename="../project_view.py" line="463"/>
         <source>Delete test</source>
         <translation>Test verwijderen</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="432"/>
+        <location filename="../project_view.py" line="463"/>
         <source>Delete {name}?</source>
         <translation>{name} verwijderen?</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="453"/>
+        <location filename="../project_view.py" line="484"/>
         <source>Run against</source>
         <translation>Draaien op</translation>
     </message>
@@ -951,27 +1026,27 @@
 <context>
     <name>RunStatus</name>
     <message>
-        <location filename="../project_view.py" line="61"/>
+        <location filename="../project_view.py" line="63"/>
         <source>Passed</source>
         <translation>Geslaagd</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="62"/>
+        <location filename="../project_view.py" line="64"/>
         <source>Flaky</source>
         <translation>Wisselvallig</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="63"/>
+        <location filename="../project_view.py" line="65"/>
         <source>Failed</source>
         <translation>Mislukt</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="64"/>
+        <location filename="../project_view.py" line="66"/>
         <source>Error</source>
         <translation>Fout</translation>
     </message>
     <message>
-        <location filename="../project_view.py" line="65"/>
+        <location filename="../project_view.py" line="67"/>
         <source>Skipped</source>
         <translation>Overgeslagen</translation>
     </message>

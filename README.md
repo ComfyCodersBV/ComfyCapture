@@ -42,6 +42,11 @@ browsertests run --project shop --env staging --tag CINF-19   # tags AND togethe
 browsertests run --project shop --env staging --test "Guest checkout" --headed
 ```
 
+```bash
+browsertests export --project shop --tag CINF-19 --out exports/
+browsertests import exports/*.json    # exit 2 while variables or secrets are still missing
+```
+
 Exit codes: `0` passed, `1` a test failed, `2` configuration error. `--jsonl` gives machine-readable
 output. Secrets come from `BROWSERTESTS_SECRET_<NAME>` or the OS keyring; `BROWSERTESTS_DATABASE`
 points at another database.

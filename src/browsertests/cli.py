@@ -33,6 +33,16 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--retries", type=int, default=None, help="retries for a failing test (default 1)")
     run.add_argument("--jsonl", action="store_true", help="machine-readable JSON lines on stdout")
 
+    exporting = commands.add_parser("export", help="export tests as JSON files, one per test")
+    exporting.add_argument("--project", required=True, help="project slug")
+    exporting.add_argument(
+        "--tag", action="append", default=[], help="only tests with this tag (repeatable, ANDs)"
+    )
+    exporting.add_argument("--out", required=True, help="directory to write the files to")
+
+    importing = commands.add_parser("import", help="import exported JSON files")
+    importing.add_argument("files", nargs="+", help="exported .json files")
+
     listing = commands.add_parser("list", help="list the tests of a project")
     listing.add_argument("--project", required=True, help="project slug")
     listing.add_argument(
@@ -159,6 +169,46 @@ def command_run(arguments: argparse.Namespace) -> int:
     return code
 
 
+def command_export(arguments: argparse.Namespace) -> int:
+    from browsertests.core import db, exchange
+
+    connection = db.connect(database_path(arguments.database))
+    project = db.ProjectRepository(connection).by_slug(arguments.project)
+    if project is None or project.id is None:
+        return fail(f"unknown project {arguments.project!r}")
+    tests = db.TestRepository(connection).for_project(project.id, tuple(arguments.tag))
+    if not tests:
+        return fail("no tests match the selection")
+    directory = Path(arguments.out)
+    directory.mkdir(parents=True, exist_ok=True)
+    for name, text in exchange.export_tests(connection, project, tests):
+        (directory / name).write_text(text, encoding="utf-8")
+        print(directory / name)
+    return EXIT_PASSED
+
+
+def command_import(arguments: argparse.Namespace) -> int:
+    from browsertests.core import db, exchange
+    from browsertests.core.secrets import SecretStore
+
+    documents = []
+    for file in arguments.files:
+        try:
+            documents.append(json.loads(Path(file).read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError) as error:
+            return fail(f"{file}: {error}")
+    connection = db.connect(database_path(arguments.database))
+    try:
+        reports = exchange.import_documents(
+            connection, documents, lambda slug, name: SecretStore(slug).has(name)
+        )
+    except exchange.ExchangeError as error:
+        return fail(str(error))
+    for report in reports:
+        print("\n".join(report.lines()))
+    return EXIT_PASSED if all(report.ready for report in reports) else EXIT_CONFIGURATION
+
+
 def print_result(result: dict[str, Any]) -> None:
     label = {"passed": "PASS", "flaky": "FLAKY", "failed": "FAIL", "error": "ERROR", "skipped": "SKIP"}[
         result["status"]
@@ -178,6 +228,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return command_run(arguments)
     if arguments.command == "list":
         return command_list(arguments)
+    if arguments.command == "export":
+        return command_export(arguments)
+    if arguments.command == "import":
+        return command_import(arguments)
     parser.print_help()
     return EXIT_PASSED
 

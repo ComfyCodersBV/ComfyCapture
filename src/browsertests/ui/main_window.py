@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
 import sqlite3
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QDialog,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -17,8 +20,9 @@ from PySide6.QtWidgets import (
 )
 
 from browsertests import __version__
-from browsertests.core import db
+from browsertests.core import db, exchange
 from browsertests.core.models import Project
+from browsertests.core.secrets import SecretStore
 from browsertests.ui.dialogs import ProjectDialog
 from browsertests.ui.project_view import ProjectView
 from browsertests.ui.settings_dialog import SettingsDialog
@@ -33,6 +37,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(WINDOW_TITLE.format(version=__version__))
         self.resize(1280, 800)
         self.setMinimumSize(960, 600)
+        self._connection = connection
         self._projects = db.ProjectRepository(connection)
         self._tests = db.TestRepository(connection)
 
@@ -87,6 +92,9 @@ class MainWindow(QMainWindow):
         heading_row.addWidget(add)
         layout.addLayout(heading_row)
         layout.addWidget(self.project_list, 1)
+        import_button = IconButton(self.tr("Import tests"), "upload", "ghost", self._import)
+        import_button.setStyleSheet("text-align: left; padding-left: 10px;")
+        layout.addWidget(import_button)
         settings = IconButton(self.tr("Settings"), "settings", "ghost", self._open_settings)
         settings.setStyleSheet("text-align: left; padding-left: 10px;")
         layout.addWidget(settings)
@@ -148,6 +156,42 @@ class MainWindow(QMainWindow):
         if answer == QMessageBox.StandardButton.Yes:
             self._projects.delete(project.id)
             self._load_projects()
+
+    def _import(self) -> None:
+        files, _ = QFileDialog.getOpenFileNames(
+            self, self.tr("Import tests"), "", self.tr("Exported tests (*.json)")
+        )
+        if not files:
+            return
+        try:
+            documents = [json.loads(Path(file).read_text(encoding="utf-8")) for file in files]
+            reports = exchange.import_documents(
+                self._connection, documents, lambda slug, name: SecretStore(slug).has(name)
+            )
+        except (OSError, json.JSONDecodeError, exchange.ExchangeError) as error:
+            QMessageBox.critical(self, self.tr("Import tests"), str(error))
+            return
+        self._load_projects(self._projects.by_slug(reports[-1].project).id if reports else None)
+        QMessageBox.information(
+            self, self.tr("Import tests"), "\n\n".join(self._describe(report) for report in reports)
+        )
+
+    def _describe(self, report: exchange.ImportReport) -> str:
+        lines = [self.tr("Project {name}").format(name=report.project)]
+        parts = (
+            (report.tests_added, self.tr("Added tests: {items}")),
+            (report.tests_updated, self.tr("Updated tests: {items}")),
+            (report.environments_added, self.tr("Added environments: {items}")),
+            (report.missing_variables, self.tr("Fill in these variables: {items}")),
+            (report.missing_secrets, self.tr("Add these secrets: {items}")),
+            (report.missing_tests, self.tr("Setup or login tests that were not imported: {items}")),
+        )
+        for items, template in parts:
+            if items:
+                lines.append(template.format(items=", ".join(items)))
+        if not report.ready:
+            lines.append(self.tr("Runs refuse to start until the missing items are supplied."))
+        return "\n".join(lines)
 
     def _open_settings(self) -> None:
         SettingsDialog(self).exec()
