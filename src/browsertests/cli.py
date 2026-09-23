@@ -33,6 +33,13 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--retries", type=int, default=None, help="retries for a failing test (default 1)")
     run.add_argument("--workers", type=int, default=None, help="tests in parallel (default 2)")
     run.add_argument("--jsonl", action="store_true", help="machine-readable JSON lines on stdout")
+    run.add_argument(
+        "--notify-webhook", help="POST a JSON summary on failure (or $BROWSERTESTS_NOTIFY_WEBHOOK)"
+    )
+    run.add_argument(
+        "--notify-command", help="run this shell command on failure (or $BROWSERTESTS_NOTIFY_COMMAND)"
+    )
+    run.add_argument("--notify-always", action="store_true", help="also notify when everything passed")
 
     exporting = commands.add_parser("export", help="export tests as JSON files, one per test")
     exporting.add_argument("--project", required=True, help="project slug")
@@ -103,7 +110,7 @@ def command_list(arguments: argparse.Namespace) -> int:
 
 
 def command_run(arguments: argparse.Namespace) -> int:
-    from browsertests.core import db, runner, suite
+    from browsertests.core import db, notify, runner, suite
     from browsertests.core.secrets import SecretStore
 
     connection = db.connect(database_path(arguments.database))
@@ -175,6 +182,14 @@ def command_run(arguments: argparse.Namespace) -> int:
     else:
         counts = ", ".join(f"{count} {status}" for status, count in summary["counts"].items() if count)
         print(f"\n{counts}  (Playwright {summary['playwright']}, Chromium {summary['browser']})")
+    body = notify.payload(project.slug, environment.name, [result.to_dict() for result in results], code)
+    for problem in notify.notify(
+        body,
+        arguments.notify_webhook or os.environ.get(notify.WEBHOOK_VARIABLE),
+        arguments.notify_command or os.environ.get(notify.COMMAND_VARIABLE),
+        always=arguments.notify_always,
+    ):
+        sys.stderr.write(f"warning: {problem}\n")
     return code
 
 

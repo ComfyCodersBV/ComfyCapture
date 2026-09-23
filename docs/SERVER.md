@@ -55,6 +55,25 @@ docker run --rm -v browsertests-data:/data -v /etc/browsertests/shop.env:/run/se
 (default 1) retries a failing test; a pass on retry is reported as flaky. Traces of failures are kept
 14 days under `/data/BrowsertestSuite/artifacts/` and pruned after every run.
 
+## Notifications
+
+On failure (exit code 1 or 2) the runner can alert by itself:
+
+```bash
+browsertests run --project shop --env staging \
+    --notify-webhook https://hooks.slack.com/services/…      # or $BROWSERTESTS_NOTIFY_WEBHOOK
+browsertests run --project shop --env staging \
+    --notify-command '/usr/local/bin/mail-team'               # or $BROWSERTESTS_NOTIFY_COMMAND
+```
+
+- The webhook gets a JSON POST whose `text` field is a readable summary, which Slack and Mattermost
+  incoming webhooks show as is; `results` carries every test's status, failed step and message.
+- The command runs through the shell with `BROWSERTESTS_EXIT_CODE`, `BROWSERTESTS_PROJECT`,
+  `BROWSERTESTS_ENVIRONMENT` and `BROWSERTESTS_SUMMARY` set and the same JSON on stdin, so mail or a
+  ticket system is one small script.
+- `--notify-always` also reports green runs. A failing notification is a warning and does not change the
+  exit code.
+
 ## Scheduling
 
 No scheduler is built in. Use the one the machine already has.
@@ -95,8 +114,7 @@ systemctl daemon-reload && systemctl enable --now browsertests-shop.timer
 journalctl -u browsertests-shop.service    # results
 ```
 
-A non-zero exit marks the unit failed, which triggers `OnFailure=`: point
-`browsertests-notify@.service` at whatever should alert (mail, Slack webhook, ticket).
+A non-zero exit marks the unit failed, which triggers `OnFailure=` for anything systemd-level.
 
 ### cron
 
