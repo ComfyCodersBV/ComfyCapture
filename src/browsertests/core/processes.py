@@ -9,7 +9,9 @@ from pathlib import Path
 import platformdirs
 
 CORE_FLAG = "--core"
-CORE_MODULES = frozenset({"browsertests.core.session", "browsertests.core.verify"})
+CORE_MODULES = frozenset(
+    {"browsertests.core.health", "browsertests.core.session", "browsertests.core.verify"}
+)
 
 
 def configure_browsers() -> None:
@@ -35,9 +37,20 @@ def browser_install_command() -> list[str]:
     return [*executable, "install", "chromium"]
 
 
+def restore_standard_streams() -> None:
+    for name, descriptor, mode in (("stdin", 0, "r"), ("stdout", 1, "w"), ("stderr", 2, "w")):
+        if getattr(sys, name) is not None:
+            continue
+        try:
+            setattr(sys, name, os.fdopen(descriptor, mode, encoding="utf-8", closefd=False))
+        except OSError:
+            continue
+
+
 def dispatch(argv: Sequence[str]) -> int | None:
     configure_browsers()
     if len(argv) < 2 or argv[0] != CORE_FLAG or argv[1] not in CORE_MODULES:
         return None
+    restore_standard_streams()
     module = importlib.import_module(argv[1])
     return int(module.main(list(argv[2:])))

@@ -1,22 +1,35 @@
 stages:
   - check
   - test
-  - package
+  - release
 
 variables:
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
   UV_FROZEN: "1"
-  PYINSTALLER_ARGS: "--noconfirm --clean --windowed --name BrowsertestSuite --collect-all playwright --collect-data browsertests --copy-metadata browsertests --distpath dist --workpath build packaging/entry.py"
+  PACKAGE_NAME: browsertests
+  APP_NAME: BrowsertestSuite
+  RELEASE_TARGETS: "linux-x86_64.tar.gz macos-arm64.zip windows-x86_64.zip"
+
+.on-change:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
 
 .linux:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm
+  interruptible: true
   cache:
     key: uv-linux
     paths:
       - .cache/uv
 
 lint:
-  extends: .linux
+  extends:
+    - .linux
+    - .on-change
   stage: check
   script:
     - uv sync --group dev
@@ -24,18 +37,22 @@ lint:
     - uv run ruff format --check .
 
 core-headless:
+  extends: .on-change
   stage: test
   image: mcr.microsoft.com/playwright/python:v1.63.0-noble
+  interruptible: true
   variables:
     UV_PYTHON_PREFERENCE: only-system
   before_script:
     - pip install --break-system-packages uv
   script:
     - uv sync --group dev
-    - uv run pytest -m "not gui" -q
+    - uv run pytest -q
 
 desktop-linux:
-  extends: .linux
+  extends:
+    - .linux
+    - .on-change
   stage: test
   variables:
     QT_QPA_PLATFORM: offscreen
@@ -46,48 +63,27 @@ desktop-linux:
     - uv run playwright install --with-deps chromium
     - uv run pytest -q
 
-package-linux:
-  extends: .linux
-  stage: package
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
   before_script:
-    - apt-get update -qq && apt-get install -y -qq libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3 > /dev/null
+    - apk add --no-cache curl > /dev/null
   script:
-    - uv sync --all-extras --group package
-    - uv run pyinstaller $PYINSTALLER_ARGS
-    - QT_QPA_PLATFORM=offscreen timeout 5 dist/BrowsertestSuite/BrowsertestSuite || test $? -eq 124
-  artifacts:
-    paths:
-      - dist/BrowsertestSuite
-    expire_in: 1 week
-
-package-macos:
-  stage: package
-  tags:
-    - saas-macos-medium-m1
-  image: macos-15-xcode-16
-  script:
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.local/bin:$PATH"
-    - uv sync --all-extras --group package
-    - uv run pyinstaller $PYINSTALLER_ARGS
-    - QT_QPA_PLATFORM=offscreen perl -e 'alarm 5; exec @ARGV' dist/BrowsertestSuite.app/Contents/MacOS/BrowsertestSuite || test $? -eq 142
-  artifacts:
-    paths:
-      - dist/BrowsertestSuite.app
-    expire_in: 1 week
-
-package-windows:
-  stage: package
-  tags:
-    - saas-windows-medium-amd64
-  script:
-    - powershell -Command "irm https://astral.sh/uv/install.ps1 | iex"
-    - $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
-    - uv sync --all-extras --group package
-    - uv run pyinstaller $PYINSTALLER_ARGS.Split(' ')
-    - $env:QT_QPA_PLATFORM = "offscreen"
-    - $process = Start-Process dist\BrowsertestSuite\BrowsertestSuite.exe -PassThru; Start-Sleep 5; if ($process.HasExited) { exit 1 }; Stop-Process $process
-  artifacts:
-    paths:
-      - dist/BrowsertestSuite
-    expire_in: 1 week
+    - VERSION="${CI_COMMIT_TAG#v}"
+    - grep -q "^version = \"$VERSION\"$" pyproject.toml || { echo "Tag $CI_COMMIT_TAG does not match pyproject.toml" >&2; exit 1; }
+    - REGISTRY="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/$PACKAGE_NAME/$VERSION"
+    - |
+      set -- release-cli create --name "$APP_NAME $VERSION" --tag-name "$CI_COMMIT_TAG" \
+        --description "$APP_NAME $VERSION. Download the archive for your OS below; see packaging/RELEASING.md for installing."
+      for target in $RELEASE_TARGETS; do
+        FILE="$APP_NAME-$VERSION-$target"
+        if ! curl --fail --silent --head --header "JOB-TOKEN: $CI_JOB_TOKEN" "$REGISTRY/$FILE" > /dev/null; then
+          echo "Missing $FILE in the package registry: build and upload it first (packaging/RELEASING.md)." >&2
+          exit 1
+        fi
+        set -- "$@" --assets-link "{\"name\":\"$FILE\",\"url\":\"$REGISTRY/$FILE\",\"link_type\":\"package\"}"
+        set -- "$@" --assets-link "{\"name\":\"$FILE.sha256\",\"url\":\"$REGISTRY/$FILE.sha256\",\"link_type\":\"other\"}"
+      done
+      "$@"

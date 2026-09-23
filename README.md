@@ -35,11 +35,9 @@ the pages in `tests/fixtures/site/`.
 
 ## Packaging
 
+Desktop builds are made by hand on each OS with one command; see `packaging/RELEASING.md`.
+
 ```bash
 uv sync --all-extras --group package
-uv run pyinstaller --noconfirm --clean --windowed --name BrowsertestSuite --collect-all playwright \
-    --collect-data browsertests --copy-metadata browsertests --distpath dist --workpath build packaging/entry.py
+uv run --group package python packaging/build.py
 ```
-
-The packaged app keeps its browsers under the user data directory and offers to download Chromium on
-the first recording.

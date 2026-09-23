@@ -54,9 +54,10 @@ Tags are trimmed and de-duplicated; ticket-like tags (`[A-Za-z]+-\d+`) are upper
 
 ## D6 — Packaging
 
-PyInstaller, one-folder builds per OS (`packaging/entry.py`). Browsers are not bundled: the desktop app
-runs `playwright install chromium` in user space on first use. CI is GitLab (`.gitlab-ci.yml`); the
-macOS and Windows jobs use GitLab SaaS runner tags and need those runners to be available.
+PyInstaller, one-folder builds per OS, made by hand with `packaging/build.py` (build, smoke test,
+archive, upload to the GitLab package registry); see `packaging/RELEASING.md`. No macOS or Windows
+runners: CI only tests, and on a version tag creates the release that links to the uploaded builds.
+Browsers are not bundled: the desktop app runs `playwright install chromium` in user space on first use.
 
 Frozen builds set `PLAYWRIGHT_BROWSERS_PATH` to `<user data dir>/browsers`, so browsers survive app
 updates and never need write access to the install directory.
