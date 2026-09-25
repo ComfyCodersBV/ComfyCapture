@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+import json
+import time
+from collections.abc import Callable, Iterable
+from importlib import resources
+from typing import TYPE_CHECKING, Any
+
+from comfycapture.core.models import SelectorKind, Step
+from comfycapture.core.sanitizer import RecordedEvent, StepBuilder
+
+if TYPE_CHECKING:
+    from playwright.sync_api import BrowserContext, Frame, Page
+
+PICK_MODES = frozenset({"record", "assertVisible", "assertText", "assertValue", "assertChecked", "hover"})
+
+
+def recorder_script() -> str:
+    return resources.files("comfycapture.core").joinpath("recorder.js").read_text(encoding="utf-8")
+
+
+class Recorder:
+    def __init__(
+        self,
+        context: BrowserContext,
+        base_url: str,
+        test_id_attributes: tuple[str, ...],
+        mobile: bool = False,
+        steps: Iterable[Step] = (),
+        on_change: Callable[[tuple[Step, ...]], None] | None = None,
+        toolbar: bool = True,
+        selector_kinds: Iterable[SelectorKind] | None = None,
+        viewer: bool = False,
+        on_select: Callable[[Frame, dict[str, Any]], None] | None = None,
+        on_cursor: Callable[[str], None] | None = None,
+    ) -> None:
+        self._on_select = on_select
+        self._on_cursor = on_cursor
+        self._upload_paths: list[str] | None = None
+        self._context = context
+        self._builder = StepBuilder(
+            base_url, test_id_attributes, mobile=mobile, steps=steps, selector_kinds=selector_kinds
+        )
+        self._on_change = on_change
+        self._pages: list[Page] = []
+        self._config = {"testIdAttributes": list(test_id_attributes), "toolbar": toolbar, "viewer": viewer}
+        self.recording = False
+        self.mode = "record"
+        self.viewport: tuple[int, int] | None = None
+
+    @property
+    def steps(self) -> tuple[Step, ...]:
+        return self._builder.steps
+
+    def install(self) -> None:
+        self._context.add_init_script(
+            script=f"window.__btConfig = {json.dumps(self._config)};\n{recorder_script()}"
+        )
+        self._context.expose_binding("__btEmit", self._on_emit)
+        self._context.expose_binding("__btState", lambda source: {"mode": self.mode})
+        self._context.expose_binding("__btSetMode", self._on_set_mode)
+        self._context.expose_binding("__btSelect", self._on_select_request)
+        self._context.expose_binding("__btCursor", self._on_cursor_change)
+        self._context.on("page", self.track)
+        for page in self._context.pages:
+            self.track(page)
+
+    def track(self, page: Page) -> None:
+        if page in self._pages:
+            return
+        self._pages.append(page)
+        page.on("framenavigated", lambda frame: self._on_navigated(page, frame))
+
+    def _page_index(self, page: Page | None) -> int:
+        if page is None or page not in self._pages:
+            return 0
+        return self._pages.index(page)
+
+    def _on_emit(self, source: dict[str, Any], payload: dict[str, Any]) -> None:
+        if not isinstance(payload, dict):
+            return
+        page_index = self._page_index(source.get("page"))
+        viewport = payload.get("viewport")
+        if page_index == 0 and payload.get("topFrame", True) and isinstance(viewport, dict):
+            self.viewport = (int(viewport.get("width", 0)), int(viewport.get("height", 0)))
+        if not self.recording:
+            return
+        if payload.get("type") == "setInputFiles" and self._upload_paths:
+            payload = {**payload, "value": ",".join(self._upload_paths)}
+            self._upload_paths = None
+        event = RecordedEvent.from_payload(payload, page_index)
+        if self._builder.add(event):
+            self._changed()
+
+    def expect_upload(self, paths: list[str]) -> None:
+        self._upload_paths = paths
+
+    def note_last_step(self, note: str) -> None:
+        if self._builder.annotate_last(note):
+            self._changed()
+
+    def _on_select_request(self, source: dict[str, Any], request: dict[str, Any]) -> None:
+        frame = source.get("frame")
+        if self._on_select is not None and frame is not None and isinstance(request, dict):
+            self._on_select(frame, request)
+
+    def _on_cursor_change(self, source: dict[str, Any], cursor: str) -> None:
+        if self._on_cursor is not None:
+            self._on_cursor(str(cursor))
+
+    def request_navigation(self, url: str) -> None:
+        if self.recording and self._builder.navigation(url, time.time() * 1000, requested=True):
+            self._changed()
+
+    def _on_set_mode(self, source: dict[str, Any], mode: str) -> None:
+        if mode in PICK_MODES:
+            self.mode = mode
+
+    def _on_navigated(self, page: Page, frame: Frame) -> None:
+        if not self.recording or frame != page.main_frame:
+            return
+        if self._builder.navigation(frame.url, time.time() * 1000, self._page_index(page)):
+            self._changed()
+
+    def _changed(self) -> None:
+        if self._on_change is not None:
+            self._on_change(self._builder.steps)

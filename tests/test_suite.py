@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from browsertests.core import db, ir, runner, suite
-from browsertests.core.models import Environment, EnvironmentConfig, Project, RunStatus, Test
+from comfycapture.core import db, ir, runner, suite
+from comfycapture.core.models import Environment, EnvironmentConfig, Project, RunStatus, Test
 
 pytestmark = pytest.mark.browser
 
@@ -119,7 +119,7 @@ def test_cli_run_exit_codes_and_history(seeded, tmp_path: Path) -> None:
     database = str(tmp_path / "suite.sqlite")
 
     def cli(*arguments: str) -> subprocess.CompletedProcess:
-        command = [sys.executable, "-m", "browsertests.cli", "--database", database, *arguments]
+        command = [sys.executable, "-m", "comfycapture.cli", "--database", database, *arguments]
         return subprocess.run(command, capture_output=True, text=True, timeout=120, check=False)
 
     tagged = cli("run", "--project", "shop", "--env", "local", "--tag", "cinf-19", "--jsonl")
@@ -148,7 +148,7 @@ def test_exit_code_mapping() -> None:
 def test_old_artifacts_are_pruned(tmp_path: Path) -> None:
     from datetime import UTC, datetime
 
-    from browsertests.core.models import RunRecord
+    from comfycapture.core.models import RunRecord
 
     connection = db.connect(":memory:")
     project = db.ProjectRepository(connection).save(Project(None, "shop", "Shop"))

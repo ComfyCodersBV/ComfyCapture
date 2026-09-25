@@ -7,10 +7,10 @@ import time
 
 import pytest
 
-from browsertests.core import ir, runner, verify
-from browsertests.core.models import Action, Device, DeviceKind, EnvironmentConfig, SelectorKind
-from browsertests.core.recorder import Recorder
-from browsertests.core.session import SessionPayload
+from comfycapture.core import ir, runner, verify
+from comfycapture.core.models import Action, Device, DeviceKind, EnvironmentConfig, SelectorKind
+from comfycapture.core.recorder import Recorder
+from comfycapture.core.session import SessionPayload
 
 pytestmark = pytest.mark.browser
 
@@ -154,7 +154,7 @@ def test_session_replays_saved_steps_before_recording(site_url: str, tmp_path) -
     path.write_text(json.dumps(payload.to_dict()))
 
     process = subprocess.run(
-        [sys.executable, "-m", "browsertests.core.session", str(path)],
+        [sys.executable, "-m", "comfycapture.core.session", str(path)],
         input="stop\n",
         capture_output=True,
         text=True,

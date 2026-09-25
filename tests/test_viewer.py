@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from browsertests.core.models import Device
-from browsertests.core.session import SessionPayload
+from comfycapture.core.models import Device
+from comfycapture.core.session import SessionPayload
 
 pytestmark = pytest.mark.browser
 
@@ -38,7 +38,7 @@ class Session:
     def __init__(self, payload: SessionPayload, path: Path) -> None:
         path.write_text(json.dumps(payload.to_dict()))
         self.process = subprocess.Popen(
-            [sys.executable, "-m", "browsertests.core.session", str(path)],
+            [sys.executable, "-m", "comfycapture.core.session", str(path)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             text=True,

@@ -4,17 +4,17 @@ import pkgutil
 import subprocess
 import sys
 
-import browsertests.core
+import comfycapture.core
 
 
 def test_core_modules_import_without_qt() -> None:
-    modules = [f"browsertests.core.{info.name}" for info in pkgutil.iter_modules(browsertests.core.__path__)]
+    modules = [f"comfycapture.core.{info.name}" for info in pkgutil.iter_modules(comfycapture.core.__path__)]
     script = "\n".join(
         [
             "import importlib, sys",
             f"for name in {modules!r}:",
             "    importlib.import_module(name)",
-            "import browsertests.cli",
+            "import comfycapture.cli",
             "assert not any(m.startswith('PySide6') for m in sys.modules), 'PySide6 leaked into core'",
         ]
     )
@@ -26,8 +26,8 @@ def test_core_modules_import_without_qt() -> None:
 
 def test_cli_prints_version() -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "browsertests.cli", "--version"], capture_output=True, text=True, check=False
+        [sys.executable, "-m", "comfycapture.cli", "--version"], capture_output=True, text=True, check=False
     )
 
     assert result.returncode == 0
-    assert result.stdout.startswith("browsertests ")
+    assert result.stdout.startswith("comfycapture ")

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from browsertests.core import ir
-from browsertests.core.models import Action, Device, DeviceKind, Selector, SelectorKind, Step, Target, Test
+from comfycapture.core import ir
+from comfycapture.core.models import Action, Device, DeviceKind, Selector, SelectorKind, Step, Target, Test
 
 
 def sample_test() -> Test:

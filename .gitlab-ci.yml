@@ -6,8 +6,8 @@ stages:
 variables:
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
   UV_FROZEN: "1"
-  PACKAGE_NAME: browsertests
-  APP_NAME: BrowsertestSuite
+  PACKAGE_NAME: comfycapture
+  APP_NAME: ComfyCapture
   RELEASE_TARGETS: "linux-x86_64.tar.gz macos-arm64.zip windows-x86_64.zip"
 
 .on-change:

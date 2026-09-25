@@ -5,9 +5,9 @@ and, on a version tag, creates the GitLab release that links to the uploaded bui
 
 | OS      | Archive                                          |
 |---------|--------------------------------------------------|
-| Linux   | `BrowsertestSuite-<version>-linux-x86_64.tar.gz` |
-| macOS   | `BrowsertestSuite-<version>-macos-arm64.zip`     |
-| Windows | `BrowsertestSuite-<version>-windows-x86_64.zip`  |
+| Linux   | `ComfyCapture-<version>-linux-x86_64.tar.gz` |
+| macOS   | `ComfyCapture-<version>-macos-arm64.zip`     |
+| Windows | `ComfyCapture-<version>-windows-x86_64.zip`  |
 
 The list of expected archives is `RELEASE_TARGETS` in `.gitlab-ci.yml`; the release job fails if one is
 missing, so a release never goes out half-built.
@@ -21,13 +21,13 @@ smoke-tests and uploads. Replace the token and the tag.
 **macOS** (Terminal; the first `git` call may ask to install the Xcode command line tools):
 
 ```bash
-export GITLAB_TOKEN=glpat-XXXX TAG=v0.1.0; git clone -q "https://oauth2:$GITLAB_TOKEN@gitlab.comfycoders.nl/tranquil-tools/browsertest-suite.git" ~/bt-release && cd ~/bt-release && git checkout -q $TAG && git show origin/main:packaging/release-build.sh | bash
+export GITLAB_TOKEN=glpat-XXXX TAG=v0.1.0; git clone -q "https://oauth2:$GITLAB_TOKEN@gitlab.comfycoders.nl/tranquil-tools/comfy-capture.git" ~/bt-release && cd ~/bt-release && git checkout -q $TAG && git show origin/main:packaging/release-build.sh | bash
 ```
 
 **Windows** (PowerShell; install git first with `winget install Git.Git` if needed):
 
 ```powershell
-$env:GITLAB_TOKEN="glpat-XXXX"; $tag="v0.1.0"; git clone -q "https://oauth2:$env:GITLAB_TOKEN@gitlab.comfycoders.nl/tranquil-tools/browsertest-suite.git" "$HOME\bt-release"; cd "$HOME\bt-release"; git checkout -q $tag; git show origin/main:packaging/release-build.ps1 | Out-File -Encoding utf8 "$env:TEMP\release-build.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\release-build.ps1"
+$env:GITLAB_TOKEN="glpat-XXXX"; $tag="v0.1.0"; git clone -q "https://oauth2:$env:GITLAB_TOKEN@gitlab.comfycoders.nl/tranquil-tools/comfy-capture.git" "$HOME\bt-release"; cd "$HOME\bt-release"; git checkout -q $tag; git show origin/main:packaging/release-build.ps1 | Out-File -Encoding utf8 "$env:TEMP\release-build.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\release-build.ps1"
 ```
 
 Delete the `bt-release` folder afterwards: its git config contains the token. An Intel Mac builds
@@ -38,7 +38,7 @@ Delete the `bt-release` folder afterwards: its git config contains the token. An
 1. Install git and [uv](https://docs.astral.sh/uv/getting-started/installation/):
    - Ubuntu / macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh`
    - Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
-2. Clone: `git clone git@gitlab.comfycoders.nl:tranquil-tools/browsertest-suite.git`
+2. Clone: `git clone git@gitlab.comfycoders.nl:tranquil-tools/comfy-capture.git`
 3. Create a GitLab personal access token with the `api` scope (Passbolt is the place to keep it) and make
    it available as `GITLAB_TOKEN` when uploading:
    - Ubuntu / macOS: `export GITLAB_TOKEN=...`
@@ -88,10 +88,10 @@ name again adds a newer file to the package, and downloads always serve the newe
 
 The builds are not signed yet, so each OS warns the first time.
 
-- **Linux**: `tar xzf BrowsertestSuite-*.tar.gz` and run `BrowsertestSuite/BrowsertestSuite`.
-- **macOS**: unzip, move `BrowsertestSuite.app` to Applications, then once:
-  `xattr -dr com.apple.quarantine /Applications/BrowsertestSuite.app` (or right-click → Open).
-- **Windows**: unzip anywhere and run `BrowsertestSuite\BrowsertestSuite.exe`; on the SmartScreen warning
+- **Linux**: `tar xzf ComfyCapture-*.tar.gz` and run `ComfyCapture/ComfyCapture`.
+- **macOS**: unzip, move `ComfyCapture.app` to Applications, then once:
+  `xattr -dr com.apple.quarantine /Applications/ComfyCapture.app` (or right-click → Open).
+- **Windows**: unzip anywhere and run `ComfyCapture\ComfyCapture.exe`; on the SmartScreen warning
   choose More info → Run anyway.
 
 On the first recording the app offers to download Chromium (about 150 MB) into the user data directory;

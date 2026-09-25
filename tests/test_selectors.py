@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from browsertests.core import selectors
-from browsertests.core.models import SelectorKind
+from comfycapture.core import selectors
+from comfycapture.core.models import SelectorKind
 
 
 @pytest.mark.parametrize(

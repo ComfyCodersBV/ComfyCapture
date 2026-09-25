@@ -5,8 +5,8 @@ import subprocess
 
 import pytest
 
-from browsertests.core import pest
-from browsertests.core.models import Action, Device, DeviceKind, Selector, SelectorKind, Step, Target, Test
+from comfycapture.core import pest
+from comfycapture.core.models import Action, Device, DeviceKind, Selector, SelectorKind, Step, Target, Test
 
 
 def checkout() -> Test:
@@ -41,7 +41,7 @@ def test_steps_become_a_pest_chain() -> None:
 
     assert "$page = visit('/products/42')->on()->iPhone15();" in output
     assert "->fill('internal:label=\"E-mail\"s', env('EMAIL'))" in output
-    assert "env('BROWSERTESTS_SECRET_PW')" in output
+    assert "env('COMFYCAPTURE_SECRET_PW')" in output
     assert "->assertSeeIn('h1', 'It\\'s done');" in output
     assert output.rstrip().endswith("})->group('CINF-19');")
 

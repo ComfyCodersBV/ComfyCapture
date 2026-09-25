@@ -4,8 +4,8 @@ from dataclasses import replace
 
 import pytest
 
-from browsertests.core import db
-from browsertests.core.models import Action, Environment, Project, Step, Test
+from comfycapture.core import db
+from comfycapture.core.models import Action, Environment, Project, Step, Test
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def test_migrate_is_idempotent(tmp_path) -> None:
 
 
 def test_secret_values_never_reach_the_database(connection, project: Project) -> None:
-    from browsertests.core.models import Variable
+    from comfycapture.core.models import Variable
 
     variables = db.VariableRepository(connection)
     variables.save(project.id, Variable("order", "42"))
@@ -81,7 +81,7 @@ def test_secret_values_never_reach_the_database(connection, project: Project) ->
 
 
 def test_selector_kinds_round_trip(connection) -> None:
-    from browsertests.core.models import SelectorKind
+    from comfycapture.core.models import SelectorKind
 
     projects = db.ProjectRepository(connection)
     saved = projects.save(Project(None, "lean", "Lean", selector_kinds=(SelectorKind.LABEL,)))
@@ -90,15 +90,54 @@ def test_selector_kinds_round_trip(connection) -> None:
 
 
 def test_secrets_come_from_environment_then_file(tmp_path) -> None:
-    from browsertests.core.secrets import SecretStore
+    from comfycapture.core.secrets import SecretStore
 
     secrets = tmp_path / "secrets.env"
     secrets.write_text(
-        "# server secrets\nBROWSERTESTS_SECRET_ADMIN_PASSWORD='from-file'\nBROWSERTESTS_SECRET_VOUCHER=abc\n"
+        "# server secrets\nCOMFYCAPTURE_SECRET_ADMIN_PASSWORD='from-file'\nCOMFYCAPTURE_SECRET_VOUCHER=abc\n"
     )
-    environ = {"BROWSERTESTS_SECRETS_FILE": str(secrets), "BROWSERTESTS_SECRET_VOUCHER": "from-env"}
+    environ = {"COMFYCAPTURE_SECRETS_FILE": str(secrets), "COMFYCAPTURE_SECRET_VOUCHER": "from-env"}
     store = SecretStore("shop", environ=environ, use_keyring=False)
 
     assert store.get("admin_password") == "from-file"
     assert store.get("voucher") == "from-env"
     assert store.get("missing") is None
+
+
+def test_legacy_data_dir_moves_into_the_new_one_without_overwriting(tmp_path) -> None:
+    legacy = tmp_path / "BrowsertestSuite"
+    target = tmp_path / "ComfyCapture"
+    (legacy / "artifacts" / "shop").mkdir(parents=True)
+    (legacy / db.LEGACY_DATABASE_NAME).write_text("old database")
+    (legacy / "browsers").mkdir()
+    (target / "browsers").mkdir(parents=True)
+
+    db.migrate_legacy_data_dir(legacy, target)
+
+    assert (target / db.DATABASE_NAME).read_text() == "old database"
+    assert (target / "artifacts" / "shop").is_dir()
+    assert (legacy / "browsers").is_dir()
+    assert not (legacy / db.LEGACY_DATABASE_NAME).exists()
+
+
+def test_legacy_keyring_secret_moves_to_the_new_service(monkeypatch) -> None:
+    import keyring
+    from keyring.errors import PasswordDeleteError
+
+    from comfycapture.core.secrets import SecretStore
+
+    passwords = {("BrowsertestSuite/shop", "admin_password"): "hunter2"}
+
+    def delete_password(service: str, name: str) -> None:
+        if passwords.pop((service, name), None) is None:
+            raise PasswordDeleteError(name)
+
+    monkeypatch.setattr(keyring, "get_password", lambda service, name: passwords.get((service, name)))
+    monkeypatch.setattr(
+        keyring, "set_password", lambda service, name, value: passwords.update({(service, name): value})
+    )
+    monkeypatch.setattr(keyring, "delete_password", delete_password)
+    store = SecretStore("shop", environ={})
+
+    assert store.get("admin_password") == "hunter2"
+    assert passwords == {("ComfyCapture/shop", "admin_password"): "hunter2"}

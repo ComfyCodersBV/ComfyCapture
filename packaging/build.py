@@ -28,11 +28,11 @@ ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 BUILD = ROOT / "build"
 RELEASES = ROOT / "releases"
-APP_NAME = "BrowsertestSuite"
-BUNDLE_ID = "nl.comfycoders.BrowserTests"
-PACKAGE_NAME = "browsertests"
+APP_NAME = "ComfyCapture"
+BUNDLE_ID = "nl.comfycoders.ComfyCapture"
+PACKAGE_NAME = "comfycapture"
 GITLAB_URL = "https://gitlab.comfycoders.nl"
-GITLAB_PROJECT = "tranquil-tools/browsertest-suite"
+GITLAB_PROJECT = "tranquil-tools/comfy-capture"
 SMOKE_SECONDS = 6
 
 
@@ -115,11 +115,11 @@ def run_pyinstaller(target: Target) -> None:
         "--collect-all",
         "playwright",
         "--collect-data",
-        "browsertests",
+        "comfycapture",
         "--collect-submodules",
-        "browsertests",
+        "comfycapture",
         "--copy-metadata",
-        "browsertests",
+        "comfycapture",
         "--distpath",
         str(DIST),
         "--workpath",
@@ -137,7 +137,7 @@ def run_pyinstaller(target: Target) -> None:
 
 def smoke_test(target: Target) -> None:
     result = subprocess.run(
-        [str(target.executable), "--core", "browsertests.core.health"],
+        [str(target.executable), "--core", "comfycapture.core.health"],
         capture_output=True,
         text=True,
         timeout=60,
@@ -201,7 +201,7 @@ def upload(path: Path) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Build the BrowsertestSuite desktop app for this OS.")
+    parser = argparse.ArgumentParser(description="Build the ComfyCapture desktop app for this OS.")
     parser.add_argument(
         "--upload", action="store_true", help="upload the archive to the GitLab package registry"
     )

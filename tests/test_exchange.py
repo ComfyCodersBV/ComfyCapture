@@ -6,8 +6,8 @@ import sys
 
 import pytest
 
-from browsertests.core import db, exchange, ir
-from browsertests.core.models import Action, Environment, EnvironmentConfig, Project, Step, Test, Variable
+from comfycapture.core import db, exchange, ir
+from comfycapture.core.models import Action, Environment, EnvironmentConfig, Project, Step, Test, Variable
 
 
 def source_installation():
@@ -85,11 +85,22 @@ def test_reimport_updates_instead_of_duplicating() -> None:
     assert len(db.TestRepository(connection).for_project(project.id)) == 2
 
 
+def test_legacy_export_format_is_still_imported() -> None:
+    connection, project, stored = source_installation()
+    [(_, text)] = exchange.export_tests(connection, project, [stored])
+    document = json.loads(text)
+    document["format"] = "browsertests-export"
+
+    [report] = exchange.import_documents(db.connect(":memory:"), [document], lambda slug, name: True)
+
+    assert report.project == "shop"
+
+
 @pytest.mark.parametrize(
     ("change", "message"),
     [
         (lambda document: document.update(schema_version=ir.SCHEMA_VERSION + 1), "newer|supports up to"),
-        (lambda document: document.update(format="something"), "Not a BrowsertestSuite"),
+        (lambda document: document.update(format="something"), "Not a ComfyCapture"),
         (lambda document: document["test"]["steps"].append({"id": "x", "action": "teleport"}), "invalid"),
     ],
 )
@@ -113,7 +124,7 @@ def test_cli_export_then_import(tmp_path) -> None:
     out = tmp_path / "export"
 
     def cli(database, *arguments):
-        command = [sys.executable, "-m", "browsertests.cli", "--database", str(database), *arguments]
+        command = [sys.executable, "-m", "comfycapture.cli", "--database", str(database), *arguments]
         return subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
 
     exported = cli(source, "export", "--project", "shop", "--out", str(out))

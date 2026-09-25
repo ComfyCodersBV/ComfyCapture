@@ -88,7 +88,7 @@ updates and never need write access to the install directory.
 
 Own Qt stylesheet built from light and dark colour tokens (`ui/theme.py`), following the system scheme
 unless the user picks one in Settings. English source strings, Dutch translation in
-`ui/i18n/browsertests_nl.ts`; `packaging/update_translations.py` refreshes and compiles it.
+`ui/i18n/comfycapture_nl.ts`; `packaging/update_translations.py` refreshes and compiles it.
 
 ## D8 — Runs, setup and login (M2)
 

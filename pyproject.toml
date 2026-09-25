@@ -1,5 +1,5 @@
 [project]
-name = "browsertests"
+name = "comfycapture"
 version = "0.1.0"
 description = "Record browser tests once, replay them on demand and on a schedule."
 readme = "README.md"
@@ -17,10 +17,10 @@ desktop = [
 ]
 
 [project.scripts]
-browsertests = "browsertests.cli:main"
+comfycapture = "comfycapture.cli:main"
 
 [project.gui-scripts]
-browsertests-desktop = "browsertests.app:main"
+comfycapture-desktop = "comfycapture.app:main"
 
 [dependency-groups]
 dev = [
@@ -36,7 +36,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/browsertests"]
+packages = ["src/comfycapture"]
 
 [tool.ruff]
 line-length = 110
@@ -51,7 +51,7 @@ ignore = ["ANN401", "E501"]
 "tests/**" = ["ANN"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["browsertests"]
+known-first-party = ["comfycapture"]
 required-imports = ["from __future__ import annotations"]
 
 [tool.pytest.ini_options]

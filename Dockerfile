@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/playwright/python:v1.63.0-noble
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     XDG_DATA_HOME=/data \
-    BROWSERTESTS_DATABASE=/data/browsertests.sqlite
+    COMFYCAPTURE_DATABASE=/data/comfycapture.sqlite
 
 WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
@@ -18,5 +18,5 @@ RUN pip install --break-system-packages uv \
 
 USER pwuser
 VOLUME ["/data"]
-ENTRYPOINT ["browsertests"]
+ENTRYPOINT ["comfycapture"]
 CMD ["--help"]

@@ -4,7 +4,7 @@ import http.server
 import json
 import threading
 
-from browsertests.core import notify
+from comfycapture.core import notify
 
 RESULTS = [
     {"name": "Home", "status": "passed", "failed_step_id": None, "message": None},
@@ -25,7 +25,7 @@ def test_command_gets_summary_and_json(tmp_path) -> None:
     output = tmp_path / "out.json"
     body = notify.payload("shop", "staging", RESULTS, 1)
 
-    problems = notify.notify(body, None, f'cat > {output}; echo "$BROWSERTESTS_EXIT_CODE" >> {output}.code')
+    problems = notify.notify(body, None, f'cat > {output}; echo "$COMFYCAPTURE_EXIT_CODE" >> {output}.code')
 
     assert problems == []
     assert json.loads(output.read_text())["results"][1]["name"] == "Checkout"

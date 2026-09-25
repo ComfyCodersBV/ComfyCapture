@@ -15,7 +15,7 @@ from pathlib import Path
 import PySide6
 
 ROOT = Path(__file__).resolve().parent.parent
-UI = ROOT / "src" / "browsertests" / "ui"
+UI = ROOT / "src" / "comfycapture" / "ui"
 LANGUAGES = ("nl",)
 
 
@@ -26,7 +26,7 @@ def tool(name: str) -> str:
 def main() -> int:
     sources = sorted(str(path) for path in UI.glob("*.py"))
     for language in LANGUAGES:
-        source = UI / "i18n" / f"browsertests_{language}.ts"
+        source = UI / "i18n" / f"comfycapture_{language}.ts"
         subprocess.run([tool("lupdate"), *sources, "-ts", str(source), "-no-obsolete"], check=True)
         subprocess.run([tool("lrelease"), str(source), "-qm", str(source.with_suffix(".qm"))], check=True)
     return 0

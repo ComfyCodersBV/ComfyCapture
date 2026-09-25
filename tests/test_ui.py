@@ -3,11 +3,11 @@ from __future__ import annotations
 import pytest
 from PySide6.QtWidgets import QApplication
 
-from browsertests.core import db, ir
-from browsertests.core.models import Action, Environment, Project, Step, Test
-from browsertests.ui.dialogs import RecordSetupDialog
-from browsertests.ui.main_window import MainWindow
-from browsertests.ui.test_editor import ReviewDialog
+from comfycapture.core import db, ir
+from comfycapture.core.models import Action, Environment, Project, Step, Test
+from comfycapture.ui.dialogs import RecordSetupDialog
+from comfycapture.ui.main_window import MainWindow
+from comfycapture.ui.test_editor import ReviewDialog
 
 pytestmark = pytest.mark.gui
 
@@ -64,7 +64,7 @@ def test_review_refuses_to_verify_destructive_test_on_protected_environment(
     _, project, environment, test = seeded
     warnings = []
     monkeypatch.setattr(
-        "browsertests.ui.test_editor.QMessageBox.warning", lambda *args: warnings.append(args)
+        "comfycapture.ui.test_editor.QMessageBox.warning", lambda *args: warnings.append(args)
     )
     dialog = ReviewDialog(test, project, Environment(9, project.id, "production", "https://shop.test"))
     dialog.destructive.setChecked(True)
@@ -86,7 +86,7 @@ def test_record_setup_offers_desktop_and_mobile(application, seeded) -> None:
 
 
 def test_dutch_translation_is_bundled_and_loads(application, monkeypatch) -> None:
-    from browsertests.ui import translations
+    from comfycapture.ui import translations
 
     monkeypatch.setattr(translations, "preferred_language", lambda: "nl")
 
@@ -103,7 +103,7 @@ def test_dutch_translation_is_bundled_and_loads(application, monkeypatch) -> Non
 def test_run_dialog_shows_live_results(application, tmp_path, site_url) -> None:
     import time
 
-    from browsertests.ui.run_view import RunDialog
+    from comfycapture.ui.run_view import RunDialog
 
     connection = db.connect(tmp_path / "suite.sqlite")
     project = db.ProjectRepository(connection).save(Project(None, "shop", "Shop"))
@@ -127,8 +127,8 @@ def test_run_dialog_shows_live_results(application, tmp_path, site_url) -> None:
 
 
 def test_variables_dialog_reports_references_that_are_not_defined(application, seeded, monkeypatch) -> None:
-    from browsertests.core.models import Variable
-    from browsertests.ui.variables_dialog import VariablesDialog
+    from comfycapture.core.models import Variable
+    from comfycapture.ui.variables_dialog import VariablesDialog
 
     connection, project, _, test = seeded
     db.TestRepository(connection).save(
@@ -140,7 +140,7 @@ def test_variables_dialog_reports_references_that_are_not_defined(application, s
         ),
     )
     db.VariableRepository(connection).save(project.id, Variable("locale", "nl"))
-    monkeypatch.setattr("browsertests.ui.variables_dialog.SecretStore.has", lambda self, name: False)
+    monkeypatch.setattr("comfycapture.ui.variables_dialog.SecretStore.has", lambda self, name: False)
 
     dialog = VariablesDialog(connection, project)
 
@@ -152,7 +152,7 @@ def test_variables_dialog_reports_references_that_are_not_defined(application, s
 def test_tag_completer_completes_the_last_tag_only(application) -> None:
     from PySide6.QtWidgets import QLineEdit
 
-    from browsertests.ui.widgets import TagCompleter
+    from comfycapture.ui.widgets import TagCompleter
 
     field = QLineEdit("CINF-19, che")
     completer = TagCompleter(["checkout", "CINF-20"], field)
@@ -164,8 +164,8 @@ def test_tag_completer_completes_the_last_tag_only(application) -> None:
 
 
 def test_step_dialog_edits_value_and_promotes_a_fallback(application) -> None:
-    from browsertests.core.models import Selector, SelectorKind, Target, Variable
-    from browsertests.ui.step_dialog import StepDialog
+    from comfycapture.core.models import Selector, SelectorKind, Target, Variable
+    from comfycapture.ui.step_dialog import StepDialog
 
     step = Step(
         "s2",
@@ -192,8 +192,8 @@ def test_step_dialog_edits_value_and_promotes_a_fallback(application) -> None:
 
 
 def test_step_dialog_turns_an_unknown_step_into_a_click(application) -> None:
-    from browsertests.core.models import Selector, SelectorKind
-    from browsertests.ui.step_dialog import StepDialog
+    from comfycapture.core.models import Selector, SelectorKind
+    from comfycapture.ui.step_dialog import StepDialog
 
     dialog = StepDialog(Step("s9", Action.UNKNOWN, raw="click inside an iframe"), [])
     dialog.action.setCurrentIndex(dialog.action.findData(Action.CLICK))
@@ -205,7 +205,7 @@ def test_step_dialog_turns_an_unknown_step_into_a_click(application) -> None:
 
 
 def test_project_slug_is_lowercased_while_typing(application) -> None:
-    from browsertests.ui.dialogs import ProjectDialog
+    from comfycapture.ui.dialogs import ProjectDialog
 
     dialog = ProjectDialog()
     dialog.name.setText("ComfyConsole")

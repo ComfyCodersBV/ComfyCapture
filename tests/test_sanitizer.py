@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from browsertests.core.models import Action
-from browsertests.core.sanitizer import RecordedEvent, StepBuilder, relative_url
+from comfycapture.core.models import Action
+from comfycapture.core.sanitizer import RecordedEvent, StepBuilder, relative_url
 
 BASE = "https://shop.test/nl"
 
@@ -80,7 +80,7 @@ def test_relative_url_keeps_foreign_hosts_absolute() -> None:
 
 
 def test_base_url_trailing_slash_does_not_matter() -> None:
-    from browsertests.core.runner import absolute_url
+    from comfycapture.core.runner import absolute_url
 
     assert absolute_url("/login", "https://shop.test/") == absolute_url("/login", "https://shop.test")
     assert relative_url("https://shop.test/nl/cart", "https://shop.test/nl/") == "/cart"

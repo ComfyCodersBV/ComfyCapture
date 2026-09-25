@@ -1,4 +1,4 @@
-# BrowsertestSuite
+# ComfyCapture
 
 Record browser tests once, replay them on demand and on a schedule, and find out when a site breaks.
 Desktop app (PySide6) for Ubuntu, macOS and Windows; headless runner for servers. Playwright is the
@@ -12,8 +12,8 @@ Background and scope: `HANDOFF-browser-test-suite-CINF-19.md`.
 uv sync --all-extras
 uv run playwright install chromium
 
-uv run browsertests-desktop      # desktop app
-uv run browsertests --version    # CLI
+uv run comfycapture-desktop      # desktop app
+uv run comfycapture --version    # CLI
 
 uv run pytest -q
 uv run ruff check . && uv run ruff format --check .
@@ -36,26 +36,26 @@ the pages in `tests/fixtures/site/`.
 ## Running
 
 ```bash
-browsertests list --project shop
-browsertests run --project shop --env staging                 # all tests
-browsertests run --project shop --env staging --tag CINF-19   # tags AND together
-browsertests run --project shop --env staging --test "Guest checkout" --headed
+comfycapture list --project shop
+comfycapture run --project shop --env staging                 # all tests
+comfycapture run --project shop --env staging --tag CINF-19   # tags AND together
+comfycapture run --project shop --env staging --test "Guest checkout" --headed
 ```
 
 ```bash
-browsertests export --project shop --tag CINF-19 --out exports/
-browsertests import exports/*.json    # exit 2 while variables or secrets are still missing
+comfycapture export --project shop --tag CINF-19 --out exports/
+comfycapture import exports/*.json    # exit 2 while variables or secrets are still missing
 ```
 
 Exit codes: `0` passed, `1` a test failed, `2` configuration error. `--jsonl` gives machine-readable
-output. Secrets come from `BROWSERTESTS_SECRET_<NAME>` or the OS keyring; `BROWSERTESTS_DATABASE`
+output. Secrets come from `COMFYCAPTURE_SECRET_<NAME>` or the OS keyring; `COMFYCAPTURE_DATABASE`
 points at another database.
 
 ## Translations
 
-UI strings are English in the code and translated to Dutch in `src/browsertests/ui/i18n/`. After changing
+UI strings are English in the code and translated to Dutch in `src/comfycapture/ui/i18n/`. After changing
 UI text: `uv run python packaging/update_translations.py`, translate the unfinished strings in Qt Linguist
-(`uv run pyside6-linguist src/browsertests/ui/i18n/browsertests_nl.ts`), and run the script again.
+(`uv run pyside6-linguist src/comfycapture/ui/i18n/comfycapture_nl.ts`), and run the script again.
 
 ## Packaging
 
