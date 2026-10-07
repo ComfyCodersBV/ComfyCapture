@@ -34,6 +34,11 @@ PACKAGE_NAME = "comfycapture"
 GITLAB_URL = "https://gitlab.comfycoders.nl"
 GITLAB_PROJECT = "tranquil-tools/comfy-capture"
 SMOKE_SECONDS = 6
+MARK = ROOT / "src" / "comfycapture" / "ui" / "assets" / "mark.svg"
+DEBIAN_INSTALL_DIR = Path("opt") / PACKAGE_NAME
+DEBIAN_ARCHITECTURES = {"x86_64": "amd64", "arm64": "arm64"}
+DEBIAN_DEPENDS = "libgl1, libegl1, libxkbcommon0, libfontconfig1, libdbus-1-3, libxcb1"
+DEBIAN_MAINTAINER = "ComfyCoders <info@comfycoders.nl>"
 
 
 class BuildError(Exception):
@@ -49,6 +54,10 @@ class Target:
     def archive_name(self) -> str:
         extension = "tar.gz" if self.system == "linux" else "zip"
         return f"{APP_NAME}-{version()}-{self.system}-{self.arch}.{extension}"
+
+    @property
+    def debian_package_name(self) -> str:
+        return f"{APP_NAME}-{version()}-{self.system}-{self.arch}.deb"
 
     @property
     def bundle(self) -> Path:
@@ -165,6 +174,13 @@ def smoke_test(target: Target) -> None:
     print(f"    desktop: still running after {SMOKE_SECONDS}s")
 
 
+def write_checksum(path: Path) -> Path:
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    checksum = path.with_name(path.name + ".sha256")
+    checksum.write_text(f"{digest}  {path.name}\n", encoding="utf-8")
+    return checksum
+
+
 def archive(target: Target) -> Path:
     RELEASES.mkdir(exist_ok=True)
     destination = RELEASES / target.archive_name
@@ -179,9 +195,72 @@ def archive(target: Target) -> Path:
         )
     if target.system == "windows":
         shutil.make_archive(str(destination.with_suffix("")), "zip", DIST, target.bundle.name)
-    digest = hashlib.sha256(destination.read_bytes()).hexdigest()
-    checksum = destination.with_name(destination.name + ".sha256")
-    checksum.write_text(f"{digest}  {destination.name}\n", encoding="utf-8")
+    write_checksum(destination)
+    return destination
+
+
+def desktop_entry() -> str:
+    lines = [
+        "[Desktop Entry]",
+        "Type=Application",
+        f"Name={APP_NAME}",
+        "Comment=Record browser tests once, replay them on demand and on a schedule",
+        f"Exec=/{DEBIAN_INSTALL_DIR / APP_NAME}",
+        f"Icon={BUNDLE_ID}",
+        "Terminal=false",
+        "Categories=Development;",
+        f"StartupWMClass={APP_NAME}",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def debian_control(target: Target, installed_kilobytes: int) -> str:
+    lines = [
+        f"Package: {PACKAGE_NAME}",
+        f"Version: {version()}",
+        f"Architecture: {DEBIAN_ARCHITECTURES[target.arch]}",
+        f"Maintainer: {DEBIAN_MAINTAINER}",
+        f"Depends: {DEBIAN_DEPENDS}",
+        f"Installed-Size: {installed_kilobytes}",
+        "Section: devel",
+        "Priority: optional",
+        f"Description: {APP_NAME} desktop app",
+        " Record browser tests once, replay them on demand and on a schedule.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def debian_package(target: Target) -> Path:
+    staging = BUILD / "deb"
+    shutil.rmtree(staging, ignore_errors=True)
+    shutil.copytree(target.bundle, staging / DEBIAN_INSTALL_DIR, symlinks=True)
+
+    applications = staging / "usr" / "share" / "applications"
+    applications.mkdir(parents=True)
+    (applications / f"{BUNDLE_ID}.desktop").write_text(desktop_entry(), encoding="utf-8")
+
+    icons = staging / "usr" / "share" / "icons" / "hicolor" / "scalable" / "apps"
+    icons.mkdir(parents=True)
+    shutil.copyfile(MARK, icons / f"{BUNDLE_ID}.svg")
+
+    installed_bytes = sum(path.stat().st_size for path in staging.rglob("*") if path.is_file())
+    control = staging / "DEBIAN"
+    control.mkdir()
+    (control / "control").write_text(debian_control(target, installed_bytes // 1024 + 1), encoding="utf-8")
+
+    for path in [staging, *staging.rglob("*")]:
+        if path.is_symlink():
+            continue
+        executable = path.is_dir() or path.stat().st_mode & 0o100
+        path.chmod(0o755 if executable else 0o644)
+
+    destination = RELEASES / target.debian_package_name
+    destination.unlink(missing_ok=True)
+    subprocess.run(
+        ["dpkg-deb", "--build", "--root-owner-group", str(staging), str(destination)],
+        check=True,
+    )
+    write_checksum(destination)
     return destination
 
 
@@ -219,12 +298,17 @@ def main() -> int:
         step("Smoke test")
         smoke_test(target)
         step("Archive")
-        path = archive(target)
-        print(f"    {path}")
+        paths = [archive(target)]
+        if target.system == "linux":
+            step("Debian package")
+            paths.append(debian_package(target))
+        for path in paths:
+            print(f"    {path}")
         if arguments.upload:
             step("Upload")
-            for file in (path, path.with_name(path.name + ".sha256")):
-                print(f"    {upload(file)}")
+            for path in paths:
+                for file in (path, path.with_name(path.name + ".sha256")):
+                    print(f"    {upload(file)}")
     except (BuildError, subprocess.CalledProcessError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

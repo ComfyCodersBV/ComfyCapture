@@ -6,6 +6,7 @@ and, on a version tag, creates the GitLab release that links to the uploaded bui
 | OS      | Archive                                          |
 |---------|--------------------------------------------------|
 | Linux   | `ComfyCapture-<version>-linux-x86_64.tar.gz` |
+| Ubuntu  | `ComfyCapture-<version>-linux-x86_64.deb`    |
 | macOS   | `ComfyCapture-<version>-macos-arm64.zip`     |
 | Windows | `ComfyCapture-<version>-windows-x86_64.zip`  |
 
@@ -45,7 +46,8 @@ Delete the `bt-release` folder afterwards: its git config contains the token. An
    - Windows (PowerShell): `$env:GITLAB_TOKEN = "..."`
 
 Ubuntu additionally needs the Qt runtime libraries, which a desktop install already has:
-`sudo apt install libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3`.
+`sudo apt install libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3`. The Linux build also makes
+the `.deb`, which needs `dpkg-deb` (part of every Ubuntu install).
 
 ## Per release
 
@@ -72,7 +74,8 @@ On each OS (Linux, macOS, Windows), in the clone:
    The script refuses to upload unless the working tree is clean and HEAD carries the tag matching
    `pyproject.toml`. It builds with PyInstaller, runs a smoke test (the core subprocess must answer over
    stdout, the window must stay up for a few seconds), writes the archive plus a `.sha256` to `releases/`
-   and uploads both to the package registry of this project.
+   and uploads both to the package registry of this project. On Linux it also builds and uploads the
+   `.deb`.
 
    Without `--upload` it is a local test build; that is also the way to check a change to packaging.
 
@@ -88,7 +91,9 @@ name again adds a newer file to the package, and downloads always serve the newe
 
 The builds are not signed yet, so each OS warns the first time.
 
-- **Linux**: `tar xzf ComfyCapture-*.tar.gz` and run `ComfyCapture/ComfyCapture`.
+- **Ubuntu**: `sudo apt install ./ComfyCapture-*.deb` (or open it in App Center). ComfyCapture then
+  shows up in the app grid. Upgrade by installing a newer `.deb`; remove with `sudo apt remove comfycapture`.
+- **Other Linux**: `tar xzf ComfyCapture-*.tar.gz` and run `ComfyCapture/ComfyCapture`.
 - **macOS**: unzip, move `ComfyCapture.app` to Applications, then once:
   `xattr -dr com.apple.quarantine /Applications/ComfyCapture.app` (or right-click → Open).
 - **Windows**: unzip anywhere and run `ComfyCapture\ComfyCapture.exe`; on the SmartScreen warning
