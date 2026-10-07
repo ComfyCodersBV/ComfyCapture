@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMenu,
-    QMessageBox,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -23,7 +22,7 @@ from PySide6.QtWidgets import (
 from comfycapture.core import ir
 from comfycapture.core.models import Step
 from comfycapture.core.processes import browser_install_command
-from comfycapture.ui import formatting
+from comfycapture.ui import formatting, messages
 from comfycapture.ui.core_process import CoreProcess
 from comfycapture.ui.device_viewer import DevicePanel
 from comfycapture.ui.widgets import Card, IconButton, data_table, muted
@@ -231,7 +230,7 @@ class RecordingDialog(QDialog):
         if kind == "error":
             self._error = str(message.get("message", ""))
             if not message.get("fatal"):
-                QMessageBox.warning(self, self.windowTitle(), self._error)
+                messages.warn(self, self.windowTitle(), self._error)
 
     def _answer_select(self, request: dict[str, Any]) -> None:
         options = [option for option in request.get("options", []) if not option.get("disabled")]
@@ -254,13 +253,12 @@ class RecordingDialog(QDialog):
         title = self.tr("The page asks")
         text = None
         if kind == "alert":
-            QMessageBox.information(self, title, message)
+            messages.inform(self, title, message)
             accept = True
         elif kind == "prompt":
             text, accept = QInputDialog.getText(self, title, message, text=str(request.get("default") or ""))
         else:
-            answer = QMessageBox.question(self, title, message or self.tr("Leave this page?"))
-            accept = answer == QMessageBox.StandardButton.Yes
+            accept = messages.confirm(self, title, message or self.tr("Leave this page?"), self.tr("OK"))
         self._send({"type": "dialog_reply", "id": request.get("id"), "accept": accept, "text": text})
 
     def _answer_files(self, request: dict[str, Any]) -> None:
@@ -281,16 +279,16 @@ class RecordingDialog(QDialog):
         error = self._error or self.process.stderr.strip() or self.tr("The recording stopped unexpectedly.")
         if MISSING_BROWSER in error and self._offer_browser_install():
             return
-        QMessageBox.critical(self, self.windowTitle(), error)
+        messages.fail(self, self.windowTitle(), error)
         self.reject()
 
     def _offer_browser_install(self) -> bool:
-        answer = QMessageBox.question(
+        if not messages.confirm(
             self,
             self.windowTitle(),
             self.tr("The Playwright browser is not installed yet. Download it now (about 150 MB)?"),
-        )
-        if answer != QMessageBox.StandardButton.Yes:
+            self.tr("Download"),
+        ):
             return False
         self.status.setText(self.tr("Downloading the browser…"))
         self.stop_button.setEnabled(False)
@@ -301,7 +299,7 @@ class RecordingDialog(QDialog):
 
     def _on_installed(self, exit_code: int) -> None:
         if exit_code != 0:
-            QMessageBox.critical(self, self.windowTitle(), self.tr("Installing the browser failed."))
+            messages.fail(self, self.windowTitle(), self.tr("Installing the browser failed."))
             self.reject()
             return
         self._error = None

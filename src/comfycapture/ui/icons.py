@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import QByteArray, QRectF, Qt
 from PySide6.QtGui import QIcon, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
@@ -42,6 +44,12 @@ PATHS = {
     "search": '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
     "monitor": '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
     "phone": '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
+    "info": '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    "help": '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+    "alert": '<path d="m21.7 18-8-14a2 2 0 0 0-3.5 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/>'
+    '<path d="M12 9v4"/><path d="M12 17h.01"/>',
+    "error": '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+    "dot": '<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>',
 }
 
 
@@ -64,4 +72,27 @@ def icon(name: str, color: str, size: int = 18) -> QIcon:
         painter.end()
         pixmap.setDevicePixelRatio(scale)
         result.addPixmap(pixmap)
+    return result
+
+
+MARK = Path(__file__).resolve().parent / "assets" / "mark.svg"
+
+
+def mark_pixmap(size: int, scale: float = 2) -> QPixmap:
+    renderer = QSvgRenderer(str(MARK))
+    pixels = round(size * scale)
+    pixmap = QPixmap(pixels, pixels)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    renderer.render(painter, QRectF(0, 0, pixels, pixels))
+    painter.end()
+    pixmap.setDevicePixelRatio(scale)
+    return pixmap
+
+
+def app_icon() -> QIcon:
+    result = QIcon()
+    for size in (16, 24, 32, 48, 64, 128, 256, 512):
+        result.addPixmap(mark_pixmap(size, 1))
     return result

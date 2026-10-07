@@ -4,13 +4,13 @@ import contextlib
 import re
 import sqlite3
 
+from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from comfycapture.core import db, ir
 from comfycapture.core.models import Project, Variable
 from comfycapture.core.secrets import SecretStore, environment_key
+from comfycapture.ui import messages
 from comfycapture.ui.dialogs import FormDialog
 from comfycapture.ui.widgets import Card, IconButton, data_table, enable_with_selection, muted
 
@@ -85,6 +86,39 @@ class VariableDialog(FormDialog):
 
     def result_variable(self) -> Variable:
         return Variable(self.name.text().strip(), self.value.text(), self.secret.isChecked())
+
+
+def store_variable(
+    parent: QWidget,
+    connection: sqlite3.Connection,
+    project: Project,
+    variable: Variable,
+    keep_secret: bool = False,
+) -> bool:
+    if variable.is_secret and not keep_secret:
+        try:
+            SecretStore(project.slug).set(variable.name, variable.value or "")
+        except Exception as error:
+            messages.fail(
+                parent,
+                parent.windowTitle(),
+                QCoreApplication.translate(
+                    "VariablesDialog", "The keychain refused to store the secret: {error}"
+                ).format(error=error),
+            )
+            return False
+    db.VariableRepository(connection).save(project.id or 0, variable)
+    return True
+
+
+def create_variable(
+    parent: QWidget, connection: sqlite3.Connection, project: Project, secret: bool, name: str = ""
+) -> Variable | None:
+    dialog = VariableDialog(secret=secret, name=name, parent=parent)
+    if dialog.exec() != QDialog.DialogCode.Accepted:
+        return None
+    variable = dialog.result_variable()
+    return variable if store_variable(parent, connection, project, variable) else None
 
 
 class VariablesDialog(QDialog):
@@ -202,27 +236,20 @@ class VariablesDialog(QDialog):
             self._store(result, keep_secret=result.is_secret and not result.value)
 
     def _store(self, variable: Variable, keep_secret: bool) -> None:
-        if variable.is_secret and not keep_secret:
-            try:
-                self._secrets.set(variable.name, variable.value or "")
-            except Exception as error:
-                QMessageBox.critical(
-                    self,
-                    self.windowTitle(),
-                    self.tr("The keychain refused to store the secret: {error}").format(error=error),
-                )
-                return
-        self._variables.save(self._project.id or 0, variable)
-        self._load()
+        if store_variable(self, self._connection, self._project, variable, keep_secret):
+            self._load()
 
     def _delete(self) -> None:
         variable = self._selected()
         if variable is None:
             return
-        answer = QMessageBox.question(
-            self, self.tr("Delete variable"), self.tr("Delete {name}?").format(name=variable.name)
-        )
-        if answer != QMessageBox.StandardButton.Yes:
+        if not messages.confirm(
+            self,
+            self.tr("Delete variable"),
+            self.tr("Delete {name}?").format(name=variable.name),
+            self.tr("Delete"),
+            destructive=True,
+        ):
             return
         if variable.is_secret:
             with contextlib.suppress(Exception):

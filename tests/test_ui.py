@@ -4,9 +4,10 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from comfycapture.core import db, ir
-from comfycapture.core.models import Action, Environment, Project, Step, Test
+from comfycapture.core.models import Action, Environment, Project, Step, Test, Variable
 from comfycapture.ui.dialogs import RecordSetupDialog
 from comfycapture.ui.main_window import MainWindow
+from comfycapture.ui.step_dialog import StepDialog
 from comfycapture.ui.test_editor import ReviewDialog
 
 pytestmark = pytest.mark.gui
@@ -63,9 +64,7 @@ def test_review_refuses_to_verify_destructive_test_on_protected_environment(
 ) -> None:
     _, project, environment, test = seeded
     warnings = []
-    monkeypatch.setattr(
-        "comfycapture.ui.test_editor.QMessageBox.warning", lambda *args: warnings.append(args)
-    )
+    monkeypatch.setattr("comfycapture.ui.messages.warn", lambda *args: warnings.append(args))
     dialog = ReviewDialog(test, project, Environment(9, project.id, "production", "https://shop.test"))
     dialog.destructive.setChecked(True)
 
@@ -214,3 +213,20 @@ def test_project_slug_is_lowercased_while_typing(application) -> None:
     assert dialog.slug.text() == "ccn-main"
     assert dialog.validate() is None
     assert dialog.result_project().slug == "ccn-main"
+
+
+def test_step_dialog_creates_the_missing_secret_without_duplicating_it(application) -> None:
+    asked = []
+
+    def create(_parent, name):
+        asked.append(name)
+        return Variable(name, None, True)
+
+    step = Step("s1", Action.FILL, value="{{secret:password}}")
+    dialog = StepDialog(step, [Variable("email", "a@b.c", False)], None, create)
+
+    dialog._new_secret()
+
+    assert asked == ["password"]
+    assert dialog.value.text() == "{{secret:password}}"
+    assert "{{secret:password}}" in [action.text() for action in dialog.insert.menu().actions()]

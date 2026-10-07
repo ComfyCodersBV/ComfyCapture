@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QColor, QDesktopServices
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -19,23 +19,21 @@ from comfycapture.core import db
 from comfycapture.core.models import Environment, Project, StoredTest
 from comfycapture.core.processes import show_trace_command
 from comfycapture.ui.core_process import CoreProcess
-from comfycapture.ui.widgets import Card, IconButton, data_table, enable_with_selection, muted
+from comfycapture.ui.widgets import Card, IconButton, data_table, enable_with_selection, muted, pill_item
 
-STATUS_COLORS = {
-    "passed": "#16a34a",
-    "flaky": "#d97706",
-    "failed": "#dc2626",
-    "error": "#dc2626",
-    "skipped": "#6b6b7b",
-    "running": "#7c3aed",
-    "queued": "#6b6b7b",
+STATUS_TONES = {
+    "passed": "success",
+    "flaky": "warning",
+    "failed": "danger",
+    "error": "danger",
+    "skipped": "neutral",
+    "running": "info",
+    "queued": "neutral",
 }
 
 
 def status_item(status: str, label: str) -> QTableWidgetItem:
-    item = QTableWidgetItem(f"●  {label}")
-    item.setForeground(QColor(STATUS_COLORS.get(status, "#6b6b7b")))
-    return item
+    return pill_item(label, STATUS_TONES.get(status, "neutral"))
 
 
 class RunDialog(QDialog):
