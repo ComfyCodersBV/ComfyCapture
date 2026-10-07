@@ -2,8 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QCoreApplication, QEvent, QModelIndex, QObject, QPersistentModelIndex, Qt
-from PySide6.QtGui import QPalette
+from PySide6.QtCore import (
+    QCoreApplication,
+    QEvent,
+    QModelIndex,
+    QObject,
+    QPersistentModelIndex,
+    QRectF,
+    QSize,
+    Qt,
+)
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPalette
 from PySide6.QtWidgets import (
     QCompleter,
     QFrame,
@@ -12,13 +21,20 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 from shiboken6 import isValid
 
 from comfycapture.ui.icons import icon
+from comfycapture.ui.theme import active_tokens, heading_font, pill
+
+PILL_ROLE = Qt.ItemDataRole.UserRole + 1
 
 
 class IconButton(QPushButton):
@@ -41,11 +57,17 @@ class IconButton(QPushButton):
     def _render_icon(self) -> None:
         if self._icon_name is None:
             return
-        if self.property("variant") == "primary":
-            color = "#ffffff"
-        else:
-            color = self.palette().color(QPalette.ColorRole.ButtonText).name()
-        self.setIcon(icon(self._icon_name, color, 16))
+        self.setIcon(icon(self._icon_name, self._icon_color(), 16))
+
+    def _icon_color(self) -> str:
+        variant = self.property("variant")
+        if variant == "primary":
+            return active_tokens().accent_text
+        if variant == "danger":
+            return active_tokens().danger
+        if variant == "secondary":
+            return active_tokens().text
+        return self.palette().color(QPalette.ColorRole.ButtonText).name()
 
     def changeEvent(self, event: QEvent) -> None:
         super().changeEvent(event)
@@ -58,8 +80,9 @@ class Card(QFrame):
         super().__init__(parent)
         self.setObjectName("Card")
         self.header = QHBoxLayout()
+        self.header.setSpacing(4)
         heading = QVBoxLayout()
-        heading.setSpacing(2)
+        heading.setSpacing(4)
         self.title = QLabel(title)
         self.title.setObjectName("CardTitle")
         heading.addWidget(self.title)
@@ -67,25 +90,89 @@ class Card(QFrame):
             self.subtitle = QLabel(subtitle)
             self.subtitle.setObjectName("Muted")
             self.subtitle.setWordWrap(True)
+            self.subtitle.setMinimumWidth(140)
             heading.addWidget(self.subtitle)
         self.header.addLayout(heading, 1)
         self.body = QVBoxLayout(self)
-        self.body.setContentsMargins(18, 16, 18, 16)
-        self.body.setSpacing(12)
+        self.body.setContentsMargins(24, 22, 24, 22)
+        self.body.setSpacing(16)
         self.body.addLayout(self.header)
 
     def add_action(self, widget: QWidget) -> None:
         self.header.addWidget(widget, 0, Qt.AlignmentFlag.AlignTop)
 
 
+class PillDelegate(QStyledItemDelegate):
+    def paint(
+        self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex
+    ) -> None:
+        tone = index.data(PILL_ROLE)
+        if tone is None:
+            super().paint(painter, option, index)
+            return
+        background = QStyleOptionViewItem(option)
+        self.initStyleOption(background, index)
+        background.text = ""
+        widget = background.widget
+        style = widget.style() if widget is not None else None
+        if style is not None:
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, background, painter, widget)
+        self._paint_pill(painter, option, str(tone), str(index.data(Qt.ItemDataRole.DisplayRole) or ""))
+
+    def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex) -> QSize:
+        size = super().sizeHint(option, index)
+        if index.data(PILL_ROLE) is None:
+            return size
+        return QSize(size.width() + 28 + (12 if pill(str(index.data(PILL_ROLE))).dot else 0), size.height())
+
+    def _paint_pill(self, painter: QPainter, option: QStyleOptionViewItem, tone: str, text: str) -> None:
+        colors = pill(tone)
+        font = QFont(option.font)
+        font.setPixelSize(12)
+        font.setWeight(QFont.Weight.Medium)
+        metrics = QFontMetrics(font)
+        dot_space = 12 if colors.dot else 0
+        width = metrics.horizontalAdvance(text) + 22 + dot_space
+        height = 24
+        left = option.rect.left() + 12
+        top = option.rect.center().y() - height / 2 + 1
+        shape = QRectF(left, top, min(width, option.rect.width() - 16), height)
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(colors.background))
+        painter.drawRoundedRect(shape, height / 2, height / 2)
+        if colors.dot:
+            painter.setBrush(QColor(colors.dot))
+            painter.drawEllipse(QRectF(shape.left() + 10, shape.center().y() - 3, 6, 6))
+        painter.setFont(font)
+        painter.setPen(QColor(colors.text))
+        painter.drawText(
+            shape.adjusted(10 + dot_space, 0, -10, 0),
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+            metrics.elidedText(text, Qt.TextElideMode.ElideRight, int(shape.width()) - 20 - dot_space),
+        )
+        painter.restore()
+
+
+def pill_item(text: str, tone: str) -> QTableWidgetItem:
+    item = QTableWidgetItem(text)
+    item.setToolTip(text)
+    item.setData(PILL_ROLE, tone)
+    return item
+
+
 def data_table(parent: QWidget, headers: list[str], stretch_column: int | None = None) -> QTableWidget:
     table = QTableWidget(0, len(headers), parent)
-    table.setHorizontalHeaderLabels(headers)
+    table.setHorizontalHeaderLabels([header.upper() for header in headers])
+    table.horizontalHeader().setFont(heading_font(11, QFont.Weight.DemiBold, 10))
+    table.setItemDelegate(PillDelegate(table))
+    table.setMouseTracking(True)
     table.horizontalHeader().setStretchLastSection(True)
     table.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
     table.horizontalHeader().setHighlightSections(False)
     table.verticalHeader().setVisible(False)
-    table.verticalHeader().setDefaultSectionSize(38)
+    table.verticalHeader().setDefaultSectionSize(46)
     table.setShowGrid(False)
     table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
     table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)

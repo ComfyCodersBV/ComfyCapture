@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -24,8 +25,10 @@ from comfycapture.core import db, exchange
 from comfycapture.core.models import Project
 from comfycapture.core.secrets import SecretStore
 from comfycapture.ui.dialogs import ProjectDialog
+from comfycapture.ui.icons import icon, mark_pixmap
 from comfycapture.ui.project_view import ProjectView
 from comfycapture.ui.settings_dialog import SettingsDialog
+from comfycapture.ui.theme import active_tokens, heading_font
 from comfycapture.ui.widgets import IconButton
 
 WINDOW_TITLE = "ComfyCapture {version}"
@@ -69,22 +72,19 @@ class MainWindow(QMainWindow):
     def _sidebar(self) -> QWidget:
         sidebar = QFrame()
         sidebar.setObjectName("Sidebar")
-        sidebar.setFixedWidth(250)
+        sidebar.setFixedWidth(264)
         layout = QVBoxLayout(sidebar)
-        layout.setContentsMargins(14, 18, 14, 14)
-        layout.setSpacing(6)
+        layout.setContentsMargins(16, 24, 16, 24)
+        layout.setSpacing(4)
 
-        brand = QLabel("ComfyCapture")
-        brand.setObjectName("Brand")
-        company = QLabel(f"COMFYCODERS  ·  {__version__}")
-        company.setObjectName("BrandSub")
-        layout.addWidget(brand)
-        layout.addWidget(company)
-        layout.addSpacing(18)
+        layout.addLayout(self._brand())
+        layout.addSpacing(30)
 
         heading_row = QHBoxLayout()
+        heading_row.setContentsMargins(8, 0, 0, 0)
         heading = QLabel(self.tr("PROJECTS"))
         heading.setObjectName("SidebarHeading")
+        heading.setFont(heading_font(11, QFont.Weight.Bold, 14))
         heading_row.addWidget(heading)
         heading_row.addStretch()
         add = IconButton("", "plus", "ghost", self._new_project)
@@ -93,18 +93,42 @@ class MainWindow(QMainWindow):
         layout.addLayout(heading_row)
         layout.addWidget(self.project_list, 1)
         import_button = IconButton(self.tr("Import tests"), "upload", "ghost", self._import)
-        import_button.setStyleSheet("text-align: left; padding-left: 10px;")
+        import_button.setObjectName("SidebarLink")
         layout.addWidget(import_button)
         settings = IconButton(self.tr("Settings"), "settings", "ghost", self._open_settings)
-        settings.setStyleSheet("text-align: left; padding-left: 10px;")
+        settings.setObjectName("SidebarLink")
         layout.addWidget(settings)
         return sidebar
+
+    def _brand(self) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setContentsMargins(8, 0, 0, 0)
+        row.setSpacing(12)
+        mark = QLabel()
+        mark.setPixmap(mark_pixmap(40))
+        mark.setFixedSize(40, 40)
+        row.addWidget(mark)
+
+        names = QVBoxLayout()
+        names.setSpacing(3)
+        brand = QLabel("<b style='font-weight:800'>COMFY</b><span style='font-weight:300'>CAPTURE</span>")
+        brand.setObjectName("Brand")
+        brand.setFont(heading_font(15, QFont.Weight.Normal, 5))
+        company = QLabel(f"COMFYCODERS · {__version__}")
+        company.setObjectName("BrandSub")
+        company.setFont(heading_font(10, QFont.Weight.Medium, 14))
+        names.addStretch()
+        names.addWidget(brand)
+        names.addWidget(company)
+        names.addStretch()
+        row.addLayout(names, 1)
+        return row
 
     def _load_projects(self, select_id: int | None = None) -> None:
         self.project_list.blockSignals(True)
         self.project_list.clear()
         for project in self._projects.all():
-            item = QListWidgetItem(project.name)
+            item = QListWidgetItem(icon("dot", active_tokens().highlight, 16), project.name)
             item.setData(Qt.ItemDataRole.UserRole, project.id)
             self.project_list.addItem(item)
             if project.id == select_id:

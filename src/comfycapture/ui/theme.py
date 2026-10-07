@@ -5,70 +5,129 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt
-from PySide6.QtGui import QColor, QGuiApplication, QPalette
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QGuiApplication, QPalette
 from PySide6.QtWidgets import QApplication
 
 THEME_KEY = "ui/theme"
 THEMES = ("system", "light", "dark")
+FONTS = Path(__file__).resolve().parent / "fonts"
+HEADING_FONT = "Montserrat"
+BODY_FONT = "DM Sans"
+
+
+@dataclass(frozen=True, slots=True)
+class Pill:
+    background: str
+    text: str
+    dot: str | None
 
 
 @dataclass(frozen=True, slots=True)
 class Tokens:
+    dark: bool
     background: str
     surface: str
     surface_raised: str
     sidebar: str
+    sidebar_border: str
     border: str
     text: str
+    text_secondary: str
     text_muted: str
+    text_subtle: str
     accent: str
     accent_hover: str
     accent_text: str
     accent_soft: str
+    highlight: str
+    outline: str
+    hover: str
+    row_hover: str
     danger: str
+    danger_soft: str
     warning: str
     success: str
     selection: str
     input: str
+    search: str
 
 
 LIGHT = Tokens(
-    background="#f6f6f9",
-    surface="#ffffff",
-    surface_raised="#fbfbfd",
-    sidebar="#eeeef4",
-    border="#e2e2ea",
-    text="#1b1b25",
-    text_muted="#6b6b7b",
-    accent="#7c3aed",
-    accent_hover="#6d28d9",
-    accent_text="#ffffff",
-    accent_soft="#ede7fd",
-    danger="#dc2626",
-    warning="#b45309",
-    success="#15803d",
-    selection="#e4dafc",
-    input="#ffffff",
+    dark=False,
+    background="#F6F4FA",
+    surface="#FFFFFF",
+    surface_raised="#FBFAFD",
+    sidebar="#FFFFFF",
+    sidebar_border="#E4DFEE",
+    border="#E4DFEE",
+    text="#221B35",
+    text_secondary="#3F2B6C",
+    text_muted="#65539E",
+    text_subtle="#7A6FA0",
+    accent="#E6287D",
+    accent_hover="#C91E6A",
+    accent_text="#FFFFFF",
+    accent_soft="#EDE8F7",
+    highlight="#60C2DE",
+    outline="#65539E",
+    hover="#E4DFEE",
+    row_hover="#F3F0F8",
+    danger="#E6287D",
+    danger_soft="#FCE4EF",
+    warning="#9A6500",
+    success="#15803D",
+    selection="#EDE8F7",
+    input="#FFFFFF",
+    search="#F6F4FA",
 )
 
 DARK = Tokens(
-    background="#15151c",
-    surface="#1d1d26",
-    surface_raised="#23232e",
-    sidebar="#111118",
-    border="#2e2e3b",
-    text="#ececf3",
-    text_muted="#9a9aab",
-    accent="#8b5cf6",
-    accent_hover="#a78bfa",
-    accent_text="#ffffff",
-    accent_soft="#2d2445",
-    danger="#f87171",
-    warning="#fbbf24",
-    success="#4ade80",
-    selection="#3a2f5c",
-    input="#17171f",
+    dark=True,
+    background="#221B35",
+    surface="#2A2142",
+    surface_raised="#2F2549",
+    sidebar="#1B152B",
+    sidebar_border="#2E2548",
+    border="#362B55",
+    text="#FFFFFF",
+    text_secondary="#D8D2E8",
+    text_muted="#B8B0CF",
+    text_subtle="#8C82AB",
+    accent="#E6287D",
+    accent_hover="#C91E6A",
+    accent_text="#FFFFFF",
+    accent_soft="#3F2B6C",
+    highlight="#60C2DE",
+    outline="#65539E",
+    hover="#362B55",
+    row_hover="#322850",
+    danger="#E6287D",
+    danger_soft="#3A1C3E",
+    warning="#F7A810",
+    success="#4ADE80",
+    selection="#3F2B6C",
+    input="#221B35",
+    search="#221B35",
 )
+
+PILLS = {
+    False: {
+        "neutral": Pill("#E4DFEE", "#3F2B6C", None),
+        "warning": Pill("#FDF0D2", "#9A6500", "#F7A810"),
+        "success": Pill("#DCF5E6", "#15803D", "#22C55E"),
+        "danger": Pill("#FCE4EF", "#C91E6A", "#E6287D"),
+        "info": Pill("#E0F3F9", "#1F7FA0", "#60C2DE"),
+    },
+    True: {
+        "neutral": Pill("#362B55", "#D8D2E8", None),
+        "warning": Pill("#3B2E1E", "#F7A810", "#F7A810"),
+        "success": Pill("#1E3B2E", "#4ADE80", "#4ADE80"),
+        "danger": Pill("#3A1C3E", "#FF5FA2", "#E6287D"),
+        "info": Pill("#1C3341", "#60C2DE", "#60C2DE"),
+    },
+}
+
+_active = {"tokens": LIGHT}
 
 
 def preferred_theme() -> str:
@@ -88,6 +147,31 @@ def resolve_tokens(theme: str) -> Tokens:
     return DARK if system_is_dark() else LIGHT
 
 
+def active_tokens() -> Tokens:
+    return _active["tokens"]
+
+
+def pill(tone: str) -> Pill:
+    pills = PILLS[active_tokens().dark]
+    return pills.get(tone, pills["neutral"])
+
+
+def load_fonts() -> None:
+    if HEADING_FONT in QFontDatabase.families() and BODY_FONT in QFontDatabase.families():
+        return
+    for path in sorted(FONTS.glob("*.ttf")):
+        QFontDatabase.addApplicationFont(str(path))
+
+
+def heading_font(pixel_size: int, weight: QFont.Weight, spacing: float = 0) -> QFont:
+    font = QFont(HEADING_FONT)
+    font.setPixelSize(pixel_size)
+    font.setWeight(weight)
+    if spacing:
+        font.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 100 + spacing)
+    return font
+
+
 def palette(tokens: Tokens) -> QPalette:
     result = QPalette()
     roles = {
@@ -97,18 +181,18 @@ def palette(tokens: Tokens) -> QPalette:
         QPalette.ColorRole.AlternateBase: tokens.surface_raised,
         QPalette.ColorRole.Text: tokens.text,
         QPalette.ColorRole.Button: tokens.surface,
-        QPalette.ColorRole.ButtonText: tokens.text,
+        QPalette.ColorRole.ButtonText: tokens.text_secondary,
         QPalette.ColorRole.Highlight: tokens.accent,
         QPalette.ColorRole.HighlightedText: tokens.accent_text,
         QPalette.ColorRole.ToolTipBase: tokens.surface_raised,
         QPalette.ColorRole.ToolTipText: tokens.text,
-        QPalette.ColorRole.PlaceholderText: tokens.text_muted,
-        QPalette.ColorRole.Link: tokens.accent,
+        QPalette.ColorRole.PlaceholderText: tokens.text_subtle,
+        QPalette.ColorRole.Link: tokens.highlight,
     }
     for role, color in roles.items():
         result.setColor(role, QColor(color))
-    result.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(tokens.text_muted))
-    result.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(tokens.text_muted))
+    result.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(tokens.text_subtle))
+    result.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(tokens.text_subtle))
     return result
 
 
@@ -127,77 +211,85 @@ def check_image() -> str:
 
 def stylesheet(tokens: Tokens) -> str:
     check = check_image()
+    heading = f'font-family: "{HEADING_FONT}";'
     return f"""
-    * {{ font-size: 13px; }}
+    * {{ font-family: "{BODY_FONT}"; font-size: 14px; }}
     QMainWindow, QDialog {{ background: {tokens.background}; color: {tokens.text}; }}
     QWidget {{ color: {tokens.text}; }}
     QToolTip {{ background: {tokens.surface_raised}; color: {tokens.text}; border: 1px solid {tokens.border};
-        padding: 6px 8px; border-radius: 6px; }}
+        padding: 6px 8px; border-radius: 8px; }}
 
-    #Sidebar {{ background: {tokens.sidebar}; border-right: 1px solid {tokens.border}; }}
-    #Brand {{ font-size: 15px; font-weight: 700; }}
-    #BrandSub {{ color: {tokens.text_muted}; font-size: 11px; }}
-    #SidebarHeading {{ color: {tokens.text_muted}; font-size: 11px; font-weight: 600; }}
-    #ProjectList {{ background: transparent; border: none; outline: 0; }}
-    #ProjectList::item {{ padding: 8px 10px; border-radius: 8px; margin: 1px 0; }}
-    #ProjectList::item:hover {{ background: {tokens.surface}; }}
-    #ProjectList::item:selected {{ background: {tokens.accent_soft}; color: {tokens.text}; font-weight: 600; }}
+    #Sidebar {{ background: {tokens.sidebar}; border-right: 1px solid {tokens.sidebar_border}; }}
+    #Brand {{ {heading} font-size: 15px; }}
+    #BrandSub {{ {heading} color: {tokens.text_subtle}; font-size: 10px; font-weight: 500; }}
+    #SidebarHeading {{ {heading} color: {tokens.text_subtle}; font-size: 11px; font-weight: 700; }}
+    #ProjectList {{ background: transparent; border: none; outline: 0; padding: 0; }}
+    #ProjectList::item {{ padding: 10px 12px; border-radius: 14px; margin: 2px 0; color: {tokens.text_secondary}; }}
+    #ProjectList::item:hover {{ background: {tokens.hover}; }}
+    #ProjectList::item:selected {{ background: {tokens.accent_soft}; color: {tokens.text}; font-weight: 500; }}
+    QPushButton#SidebarLink {{ text-align: left; padding: 0 14px; border-radius: 14px; height: 38px; }}
 
-    #PageTitle {{ font-size: 22px; font-weight: 700; }}
+    #PageTitle {{ {heading} font-size: 28px; font-weight: 800; }}
     #PageSubtitle, #Muted {{ color: {tokens.text_muted}; }}
-    #Card {{ background: {tokens.surface}; border: 1px solid {tokens.border}; border-radius: 12px; }}
-    #CardTitle {{ font-size: 15px; font-weight: 600; }}
-    #EmptyState {{ color: {tokens.text_muted}; font-size: 14px; }}
+    #Card {{ background: {tokens.surface}; border: 1px solid {tokens.border}; border-radius: 20px; }}
+    #CardTitle {{ {heading} font-size: 17px; font-weight: 700; }}
+    #EmptyState {{ color: {tokens.text_muted}; font-size: 15px; }}
     #Status {{ color: {tokens.text_muted}; }}
     #Required {{ color: {tokens.danger}; font-weight: 700; }}
-    #Optional {{ color: {tokens.text_muted}; font-size: 11px; }}
-    #FieldHint {{ color: {tokens.text_muted}; font-size: 11px; }}
-    #Badge {{ background: {tokens.accent_soft}; color: {tokens.accent}; border-radius: 9px; padding: 2px 8px;
-        font-size: 11px; font-weight: 600; }}
+    #Optional {{ color: {tokens.text_subtle}; font-size: 12px; }}
+    #FieldHint {{ color: {tokens.text_subtle}; font-size: 12px; }}
+    #Badge {{ background: {tokens.accent_soft}; color: {tokens.text}; border-radius: 11px; padding: 3px 10px;
+        font-size: 12px; font-weight: 500; }}
 
-    QPushButton {{ background: {tokens.surface}; color: {tokens.text}; border: 1px solid {tokens.border};
-        border-radius: 8px; padding: 7px 14px; }}
-    QPushButton:hover {{ border-color: {tokens.accent}; }}
-    QPushButton:pressed {{ background: {tokens.surface_raised}; }}
-    QPushButton:disabled {{ color: {tokens.text_muted}; border-color: {tokens.border}; }}
-    QPushButton[variant="primary"] {{ background: {tokens.accent}; color: {tokens.accent_text}; border: 1px solid {tokens.accent};
-        font-weight: 600; }}
+    QPushButton {{ {heading} background: transparent; color: {tokens.text}; border: 1px solid {tokens.outline};
+        border-radius: 19px; padding: 0 16px; min-height: 36px; font-size: 13px; font-weight: 600; }}
+    QPushButton:hover {{ background: {tokens.accent_soft}; }}
+    QPushButton:pressed {{ background: {tokens.hover}; }}
+    QPushButton:disabled {{ color: {tokens.text_subtle}; border-color: {tokens.border}; }}
+    QPushButton[variant="primary"] {{ background: {tokens.accent}; color: {tokens.accent_text};
+        border: 1px solid {tokens.accent}; font-weight: 700; padding: 0 18px; }}
     QPushButton[variant="primary"]:hover {{ background: {tokens.accent_hover}; border-color: {tokens.accent_hover}; }}
-    QPushButton[variant="primary"]:disabled {{ background: {tokens.border}; border-color: {tokens.border}; }}
-    QPushButton[variant="ghost"] {{ background: transparent; border: 1px solid transparent; }}
-    QPushButton[variant="ghost"]:hover {{ background: {tokens.surface}; border-color: {tokens.border}; }}
+    QPushButton[variant="primary"]:disabled {{ background: {tokens.border}; border-color: {tokens.border};
+        color: {tokens.text_subtle}; }}
+    QPushButton[variant="ghost"], QPushButton[variant="danger"] {{ font-family: "{BODY_FONT}"; font-size: 14px;
+        font-weight: 400; background: transparent; border: 1px solid transparent; border-radius: 12px;
+        padding: 0 12px; color: {tokens.text_secondary}; }}
+    QPushButton[variant="ghost"]:hover {{ background: {tokens.hover}; }}
+    QPushButton[variant="danger"] {{ color: {tokens.danger}; }}
+    QPushButton[variant="danger"]:hover {{ background: {tokens.danger_soft}; }}
     QPushButton:checked, QPushButton[variant="ghost"]:checked {{ background: {tokens.accent_soft};
-        border: 1px solid {tokens.accent}; color: {tokens.text}; }}
-    QPushButton[variant="danger"] {{ color: {tokens.danger}; background: transparent; border: 1px solid transparent; }}
-    QPushButton[variant="danger"]:hover {{ border-color: {tokens.danger}; }}
-    QPushButton[variant="danger"]:disabled, QPushButton[variant="ghost"]:disabled {{ color: {tokens.text_muted};
-        border-color: transparent; }}
+        border: 1px solid {tokens.outline}; color: {tokens.text}; }}
+    QPushButton[variant="danger"]:disabled, QPushButton[variant="ghost"]:disabled {{ color: {tokens.text_subtle};
+        background: transparent; border-color: transparent; }}
 
     QLineEdit, QComboBox, QPlainTextEdit {{ background: {tokens.input}; border: 1px solid {tokens.border};
-        border-radius: 8px; padding: 7px 10px; selection-background-color: {tokens.selection};
+        border-radius: 12px; padding: 8px 12px; selection-background-color: {tokens.selection};
         selection-color: {tokens.text}; }}
-    QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus {{ border: 1px solid {tokens.accent}; }}
+    QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus {{ border: 1px solid {tokens.outline}; }}
     QLineEdit[invalid="true"] {{ border: 1px solid {tokens.danger}; }}
+    QLineEdit#SearchField {{ background: {tokens.search}; border-radius: 14px; padding: 0 12px; min-height: 42px; }}
     QComboBox::drop-down {{ border: none; width: 24px; }}
     QComboBox QAbstractItemView {{ background: {tokens.surface}; border: 1px solid {tokens.border};
         selection-background-color: {tokens.accent_soft}; selection-color: {tokens.text}; outline: 0; padding: 4px; }}
     QCheckBox {{ spacing: 8px; }}
-    QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {tokens.border};
+    QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 5px; border: 1px solid {tokens.outline};
         background: {tokens.input}; }}
     QCheckBox::indicator:checked {{ background: {tokens.accent}; border-color: {tokens.accent};
         image: url("{check}"); }}
 
-    QListWidget {{ background: {tokens.input}; border: 1px solid {tokens.border}; border-radius: 8px;
+    QListWidget {{ background: {tokens.input}; border: 1px solid {tokens.border}; border-radius: 12px;
         padding: 4px; outline: 0; }}
-    QListWidget::item {{ padding: 7px 8px; border-radius: 6px; }}
+    QListWidget::item {{ padding: 8px 10px; border-radius: 10px; }}
+    QListWidget::item:hover {{ background: {tokens.row_hover}; }}
     QListWidget::item:selected {{ background: {tokens.accent_soft}; color: {tokens.text}; }}
     QTableWidget {{ background: transparent; border: none; gridline-color: transparent; outline: 0;
         alternate-background-color: {tokens.surface_raised}; }}
-    QTableWidget::item {{ padding: 6px 8px; border-bottom: 1px solid {tokens.border}; }}
-    QTableWidget::item:selected {{ background: {tokens.accent_soft}; color: {tokens.text}; }}
+    QTableWidget::item {{ padding: 6px 12px; color: {tokens.text_secondary}; }}
+    QTableWidget::item:hover {{ background: {tokens.row_hover}; }}
+    QTableWidget::item:selected {{ background: {tokens.selection}; color: {tokens.text}; }}
     QHeaderView {{ background: transparent; border: none; }}
-    QHeaderView::section {{ background: transparent; color: {tokens.text_muted}; border: none;
-        border-bottom: 1px solid {tokens.border}; padding: 6px 8px; font-size: 11px; font-weight: 600; }}
+    QHeaderView::section {{ {heading} background: transparent; color: {tokens.text_subtle}; border: none;
+        border-bottom: 1px solid {tokens.border}; padding: 6px 12px 10px 12px; font-size: 11px; font-weight: 600; }}
     QTableCornerButton::section {{ background: transparent; border: none; }}
 
     QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
@@ -211,8 +303,11 @@ def stylesheet(tokens: Tokens) -> str:
 
 
 def apply_theme(application: QApplication, theme: str | None = None) -> Tokens:
+    load_fonts()
     tokens = resolve_tokens(theme or preferred_theme())
+    _active["tokens"] = tokens
     application.setStyle("Fusion")
+    application.setFont(QFont(BODY_FONT))
     application.setPalette(palette(tokens))
     application.setStyleSheet(stylesheet(tokens))
     return tokens

@@ -5,7 +5,6 @@ from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, Qt, Signal
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -27,11 +26,14 @@ from comfycapture.core.models import Environment, Project, StoredTest, Test
 from comfycapture.core.session import SessionPayload
 from comfycapture.ui import formatting
 from comfycapture.ui.dialogs import EnvironmentDialog, RecordSetupDialog, split_list
+from comfycapture.ui.icons import icon
 from comfycapture.ui.recording_view import RecordingDialog
-from comfycapture.ui.run_view import STATUS_COLORS, RunDialog
+from comfycapture.ui.run_view import STATUS_TONES, RunDialog
 from comfycapture.ui.test_editor import ReviewDialog
+from comfycapture.ui.theme import active_tokens
 from comfycapture.ui.variables_dialog import VariablesDialog
 from comfycapture.ui.widgets import (
+    PILL_ROLE,
     Card,
     IconButton,
     attach_tag_completer,
@@ -66,7 +68,7 @@ def run_label(status: str) -> str:
         "error": QCoreApplication.translate("RunStatus", "Error"),
         "skipped": QCoreApplication.translate("RunStatus", "Skipped"),
     }
-    return "●  " + labels.get(status, status)
+    return labels.get(status, status)
 
 
 class ProjectView(QStackedWidget):
@@ -115,8 +117,8 @@ class ProjectView(QStackedWidget):
     def _project_page(self) -> QWidget:
         content = QWidget()
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(32, 28, 32, 28)
-        layout.setSpacing(18)
+        layout.setContentsMargins(40, 32, 40, 32)
+        layout.setSpacing(20)
 
         header = QHBoxLayout()
         titles = QVBoxLayout()
@@ -181,6 +183,10 @@ class ProjectView(QStackedWidget):
         tests.add_action(IconButton(self.tr("Record new test"), "record", "primary", self._record_test))
         enable_with_selection(self.test_table, run_selected, review, continue_recording, delete_test)
         self.tag_filter = QLineEdit()
+        self.tag_filter.setObjectName("SearchField")
+        self.tag_filter.addAction(
+            icon("search", active_tokens().text_subtle, 16), QLineEdit.ActionPosition.LeadingPosition
+        )
         self.tag_filter.setPlaceholderText(self.tr("Filter by tags, e.g. CINF-19, checkout"))
         self.tag_filter.setClearButtonEnabled(True)
         self.tag_filter.textChanged.connect(self._load_tests)
@@ -227,6 +233,9 @@ class ProjectView(QStackedWidget):
                 environment.id or 0,
                 (environment.name, environment.base_url, allowed),
             )
+            self.environment_table.item(row, 2).setData(
+                PILL_ROLE, "warning" if environment.allow_destructive else "neutral"
+            )
         self.environment_table.resizeColumnsToContents()
         fit_rows(self.environment_table, 1, 5)
         self.environment_empty.setVisible(not environments)
@@ -255,10 +264,10 @@ class ProjectView(QStackedWidget):
                 item.updated_at.replace("T", " ")[:16],
             )
             set_row(self.test_table, row, item.id, cells)
+            self.test_table.item(row, 1).setData(
+                PILL_ROLE, STATUS_TONES.get(run.status.value, "neutral") if run else "neutral"
+            )
             if run is not None:
-                self.test_table.item(row, 1).setForeground(
-                    QColor(STATUS_COLORS.get(run.status.value, "#6b6b7b"))
-                )
                 self.test_table.item(row, 1).setToolTip(run.message or run.started_at)
         self.test_table.resizeColumnsToContents()
         filtering = bool(self.tag_filter.text().strip())
