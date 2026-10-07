@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMainWindow,
-    QMessageBox,
     QVBoxLayout,
     QWidget,
 )
@@ -24,6 +23,7 @@ from comfycapture import __version__
 from comfycapture.core import db, exchange
 from comfycapture.core.models import Project
 from comfycapture.core.secrets import SecretStore
+from comfycapture.ui import messages
 from comfycapture.ui.dialogs import ProjectDialog
 from comfycapture.ui.icons import icon, mark_pixmap
 from comfycapture.ui.project_view import ProjectView
@@ -164,7 +164,7 @@ class MainWindow(QMainWindow):
         try:
             saved = self._projects.save(project)
         except sqlite3.IntegrityError:
-            QMessageBox.warning(self, self.tr("Project"), self.tr("Another project already uses this slug."))
+            messages.warn(self, self.tr("Project"), self.tr("Another project already uses this slug."))
             return
         self._load_projects(saved.id)
 
@@ -172,12 +172,13 @@ class MainWindow(QMainWindow):
         project = self._current_project()
         if project is None or project.id is None:
             return
-        answer = QMessageBox.question(
+        if messages.confirm(
             self,
             self.tr("Delete project"),
             self.tr("Delete {name} with all its environments, tests and runs?").format(name=project.name),
-        )
-        if answer == QMessageBox.StandardButton.Yes:
+            self.tr("Delete project"),
+            destructive=True,
+        ):
             self._projects.delete(project.id)
             self._load_projects()
 
@@ -193,10 +194,10 @@ class MainWindow(QMainWindow):
                 self._connection, documents, lambda slug, name: SecretStore(slug).has(name)
             )
         except (OSError, json.JSONDecodeError, exchange.ExchangeError) as error:
-            QMessageBox.critical(self, self.tr("Import tests"), str(error))
+            messages.fail(self, self.tr("Import tests"), str(error))
             return
         self._load_projects(self._projects.by_slug(reports[-1].project).id if reports else None)
-        QMessageBox.information(
+        messages.inform(
             self, self.tr("Import tests"), "\n\n".join(self._describe(report) for report in reports)
         )
 

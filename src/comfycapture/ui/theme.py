@@ -238,6 +238,7 @@ def stylesheet(tokens: Tokens) -> str:
     #Required {{ color: {tokens.danger}; font-weight: 700; }}
     #Optional {{ color: {tokens.text_subtle}; font-size: 12px; }}
     #FieldHint {{ color: {tokens.text_subtle}; font-size: 12px; }}
+    #MessageText {{ color: {tokens.text_secondary}; font-size: 14px; }}
     #Badge {{ background: {tokens.accent_soft}; color: {tokens.text}; border-radius: 11px; padding: 3px 10px;
         font-size: 12px; font-weight: 500; }}
 
@@ -257,6 +258,9 @@ def stylesheet(tokens: Tokens) -> str:
     QPushButton[variant="ghost"]:hover {{ background: {tokens.hover}; }}
     QPushButton[variant="danger"] {{ color: {tokens.danger}; }}
     QPushButton[variant="danger"]:hover {{ background: {tokens.danger_soft}; }}
+    QPushButton[variant="destructive"] {{ background: {tokens.danger}; color: {tokens.accent_text};
+        border: 1px solid {tokens.danger}; font-weight: 700; padding: 0 18px; }}
+    QPushButton[variant="destructive"]:hover {{ background: {tokens.accent_hover}; border-color: {tokens.accent_hover}; }}
     QPushButton:checked, QPushButton[variant="ghost"]:checked {{ background: {tokens.accent_soft};
         border: 1px solid {tokens.outline}; color: {tokens.text}; }}
     QPushButton[variant="danger"]:disabled, QPushButton[variant="ghost"]:disabled {{ color: {tokens.text_subtle};
@@ -298,7 +302,11 @@ def stylesheet(tokens: Tokens) -> str:
     QScrollBar::handle:horizontal {{ background: {tokens.border}; border-radius: 4px; min-width: 30px; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ width: 0; height: 0; }}
     QSplitter::handle {{ background: {tokens.border}; width: 1px; }}
-    QMessageBox {{ background: {tokens.surface}; }}
+    QMenu {{ background: {tokens.surface}; border: 1px solid {tokens.border}; padding: 6px; }}
+    QMenu::item {{ padding: 8px 16px 8px 12px; border-radius: 8px; color: {tokens.text_secondary}; }}
+    QMenu::item:selected {{ background: {tokens.hover}; color: {tokens.text}; }}
+    QMenu::icon {{ padding-left: 10px; }}
+    QMenu::separator {{ height: 1px; background: {tokens.border}; margin: 6px 4px; }}
     """
 
 

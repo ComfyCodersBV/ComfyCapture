@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QScrollArea,
     QStackedWidget,
     QTableWidget,
@@ -22,16 +21,16 @@ from PySide6.QtWidgets import (
 )
 
 from comfycapture.core import db, exchange, ir, pest
-from comfycapture.core.models import Environment, Project, StoredTest, Test
+from comfycapture.core.models import Environment, Project, StoredTest, Test, Variable
 from comfycapture.core.session import SessionPayload
-from comfycapture.ui import formatting
+from comfycapture.ui import formatting, messages
 from comfycapture.ui.dialogs import EnvironmentDialog, RecordSetupDialog, split_list
 from comfycapture.ui.icons import icon
 from comfycapture.ui.recording_view import RecordingDialog
 from comfycapture.ui.run_view import STATUS_TONES, RunDialog
 from comfycapture.ui.test_editor import ReviewDialog
 from comfycapture.ui.theme import active_tokens
-from comfycapture.ui.variables_dialog import VariablesDialog
+from comfycapture.ui.variables_dialog import VariablesDialog, create_variable
 from comfycapture.ui.widgets import (
     PILL_ROLE,
     Card,
@@ -315,7 +314,7 @@ class ProjectView(QStackedWidget):
             if stored.test.id not in special
         ]
         if not tests:
-            QMessageBox.information(self, self.tr("Run"), self.tr("There are no tests to run."))
+            messages.inform(self, self.tr("Run"), self.tr("There are no tests to run."))
             return
         self._run(tests)
 
@@ -329,7 +328,7 @@ class ProjectView(QStackedWidget):
             else self._tests.for_project(self._project.id, split_list(self.tag_filter.text()))
         )
         if not tests:
-            QMessageBox.information(self, self.tr("Export"), self.tr("There are no tests to export."))
+            messages.inform(self, self.tr("Export"), self.tr("There are no tests to export."))
             return
         directory = QFileDialog.getExistingDirectory(self, self.tr("Export tests to"))
         if not directory:
@@ -339,7 +338,7 @@ class ProjectView(QStackedWidget):
             path = Path(directory) / name
             path.write_text(text, encoding="utf-8")
             written.append(name)
-        QMessageBox.information(
+        messages.inform(
             self,
             self.tr("Export"),
             self.tr(
@@ -362,7 +361,7 @@ class ProjectView(QStackedWidget):
             ]
         )
         if not tests:
-            QMessageBox.information(self, self.tr("Pest"), self.tr("There are no tests to export."))
+            messages.inform(self, self.tr("Pest"), self.tr("There are no tests to export."))
             return
         directory = QFileDialog.getExistingDirectory(self, self.tr("Write Pest tests to, e.g. tests/Browser"))
         if not directory:
@@ -381,7 +380,7 @@ class ProjectView(QStackedWidget):
         )
         if problems:
             message += "\n\n" + self.tr("Skipped:") + "\n" + "\n".join(problems)
-        QMessageBox.information(self, self.tr("Pest"), message)
+        messages.inform(self, self.tr("Pest"), message)
 
     def _add_environment(self) -> None:
         if self._project is None or self._project.id is None:
@@ -403,7 +402,7 @@ class ProjectView(QStackedWidget):
         try:
             self._environments.save(environment)
         except sqlite3.IntegrityError:
-            QMessageBox.warning(
+            messages.warn(
                 self,
                 self.tr("Environment"),
                 self.tr("This project already has an environment with that name."),
@@ -414,10 +413,13 @@ class ProjectView(QStackedWidget):
         key = selected_key(self.environment_table)
         if key is None:
             return
-        answer = QMessageBox.question(
-            self, self.tr("Delete environment"), self.tr("Delete this environment and its run history?")
-        )
-        if answer == QMessageBox.StandardButton.Yes:
+        if messages.confirm(
+            self,
+            self.tr("Delete environment"),
+            self.tr("Delete this environment and its run history?"),
+            self.tr("Delete"),
+            destructive=True,
+        ):
             self._environments.delete(key)
             self._load_environments()
 
@@ -441,9 +443,7 @@ class ProjectView(QStackedWidget):
         if self._project is None:
             return
         if not environments:
-            QMessageBox.information(
-                self, self.tr("Record"), self.tr("Add an environment to this project first.")
-            )
+            messages.inform(self, self.tr("Record"), self.tr("Add an environment to this project first."))
             return
         setup = RecordSetupDialog(environments, self, self._tests.tags(self._project.id or 0))
         if setup.exec() != QDialog.DialogCode.Accepted:
@@ -495,20 +495,29 @@ class ProjectView(QStackedWidget):
             self,
             self._tests.tags(self._project.id),
             db.VariableRepository(self._connection).for_project(self._project.id),
+            self._create_secret,
         )
         if review.exec() != QDialog.DialogCode.Accepted:
             return
         self._tests.save(self._project.id, review.result_test())
         self._load_tests()
 
+    def _create_secret(self, parent: QWidget, name: str) -> Variable | None:
+        if self._project is None:
+            return None
+        return create_variable(parent, self._connection, self._project, secret=True, name=name)
+
     def _delete_test(self) -> None:
         stored = self._selected_test()
         if stored is None:
             return
-        answer = QMessageBox.question(
-            self, self.tr("Delete test"), self.tr("Delete {name}?").format(name=stored.test.name)
-        )
-        if answer == QMessageBox.StandardButton.Yes:
+        if messages.confirm(
+            self,
+            self.tr("Delete test"),
+            self.tr("Delete {name}?").format(name=stored.test.name),
+            self.tr("Delete"),
+            destructive=True,
+        ):
             self._tests.delete(stored.id)
             self._load_tests()
 
@@ -519,7 +528,7 @@ class ProjectView(QStackedWidget):
     def _choose_environment(self) -> Environment | None:
         environments = self._environment_list()
         if not environments:
-            QMessageBox.information(
+            messages.inform(
                 self, self.tr("Environment"), self.tr("Add an environment to this project first.")
             )
             return None

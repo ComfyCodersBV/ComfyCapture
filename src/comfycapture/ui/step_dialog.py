@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
 from dataclasses import replace
 
 from PySide6.QtWidgets import (
@@ -27,11 +29,19 @@ from comfycapture.core.models import (
     Variable,
 )
 from comfycapture.ui.dialogs import FormDialog
+from comfycapture.ui.icons import icon
+from comfycapture.ui.theme import active_tokens
 from comfycapture.ui.widgets import IconButton, hint
 
 ASSERTIONS = frozenset(
     {Action.ASSERT_VISIBLE, Action.ASSERT_TEXT, Action.ASSERT_VALUE, Action.ASSERT_CHECKED}
 )
+
+SECRET_REFERENCE = re.compile(r"\{\{\s*secret:([^}\s]+)\s*\}\}")
+
+
+def reference_text(variable: Variable) -> str:
+    return "{{secret:" + variable.name + "}}" if variable.is_secret else "{{" + variable.name + "}}"
 
 
 def selector_text(selector: Selector) -> str:
@@ -41,9 +51,17 @@ def selector_text(selector: Selector) -> str:
 
 
 class StepDialog(FormDialog):
-    def __init__(self, step: Step, variables: list[Variable], parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        step: Step,
+        variables: list[Variable],
+        parent: QWidget | None = None,
+        create_secret: Callable[[QWidget, str], Variable | None] | None = None,
+    ) -> None:
         super().__init__(parent)
         self._step = step
+        self._variables = list(variables)
+        self._create_secret = create_secret
         self.setMinimumWidth(620)
         self.set_heading(
             self.tr("Edit step"),
@@ -69,16 +87,9 @@ class StepDialog(FormDialog):
         row = QHBoxLayout(value_row)
         row.setContentsMargins(0, 0, 0, 0)
         row.addWidget(self.value, 1)
-        insert = IconButton(self.tr("Insert variable"), "braces", "ghost")
-        menu = QMenu(insert)
-        for variable in variables:
-            reference = (
-                "{{secret:" + variable.name + "}}" if variable.is_secret else "{{" + variable.name + "}}"
-            )
-            menu.addAction(reference, lambda reference=reference: self.value.insert(reference))
-        insert.setMenu(menu)
-        insert.setEnabled(bool(variables))
-        row.addWidget(insert)
+        self.insert = IconButton(self.tr("Insert variable"), "braces", "ghost")
+        self._build_variable_menu()
+        row.addWidget(self.insert)
         self.value_label = self._field(self.tr("Value"), value_row, True)
 
         self.checked = QCheckBox(self.tr("Expect the element to be checked"))
@@ -188,6 +199,39 @@ class StepDialog(FormDialog):
         text, accepted = QInputDialog.getText(self, self.tr("Add CSS selector"), self.tr("CSS selector"))
         if accepted and text.strip():
             self._add_selector(Selector(SelectorKind.CSS, text.strip()))
+
+    def _build_variable_menu(self) -> None:
+        menu = QMenu(self.insert)
+        for variable in self._variables:
+            reference = reference_text(variable)
+            menu.addAction(reference, lambda reference=reference: self.value.insert(reference))
+        if self._create_secret is not None:
+            if self._variables:
+                menu.addSeparator()
+            menu.addAction(
+                icon("shield", active_tokens().text_secondary, 16), self.tr("New secret…"), self._new_secret
+            )
+        self.insert.setMenu(menu)
+        self.insert.setEnabled(bool(self._variables) or self._create_secret is not None)
+
+    def _missing_secret(self) -> str:
+        known = {variable.name for variable in self._variables if variable.is_secret}
+        for name in SECRET_REFERENCE.findall(self.value.text()):
+            if name not in known:
+                return name
+        return ""
+
+    def _new_secret(self) -> None:
+        if self._create_secret is None:
+            return
+        variable = self._create_secret(self, self._missing_secret())
+        if variable is None:
+            return
+        self._variables = [item for item in self._variables if item.name != variable.name] + [variable]
+        self._build_variable_menu()
+        reference = reference_text(variable)
+        if reference not in self.value.text():
+            self.value.insert(reference)
 
     def result_step(self) -> Step:
         action = self.selected_action()

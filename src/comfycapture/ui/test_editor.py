@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
@@ -10,7 +11,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QVBoxLayout,
     QWidget,
 )
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from comfycapture.core import ir
 from comfycapture.core.models import Environment, Project, Step, Test, Variable
 from comfycapture.core.session import SessionPayload
+from comfycapture.ui import messages
 from comfycapture.ui.core_process import CoreProcess
 from comfycapture.ui.dialogs import split_list
 from comfycapture.ui.recording_view import RecordingDialog, fill_steps_table, steps_table
@@ -41,9 +42,11 @@ class ReviewDialog(QDialog):
         parent: QWidget | None = None,
         tags: list[str] | None = None,
         variables: list[Variable] | None = None,
+        create_secret: Callable[[QWidget, str], Variable | None] | None = None,
     ) -> None:
         super().__init__(parent)
         self._variables = variables or []
+        self._create_secret = create_secret
         self.setWindowTitle(self.tr("Review test"))
         self.resize(1080, 720)
         self._test = test
@@ -165,10 +168,20 @@ class ReviewDialog(QDialog):
         row = self._selected_row()
         if row is None:
             return
-        dialog = StepDialog(self._steps[row], self._variables, self)
+        dialog = StepDialog(
+            self._steps[row], self._variables, self, self._new_secret if self._create_secret else None
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._steps[row] = dialog.result_step()
             self._refresh(row)
+
+    def _new_secret(self, parent: QWidget, name: str) -> Variable | None:
+        if self._create_secret is None:
+            return None
+        variable = self._create_secret(parent, name)
+        if variable is not None:
+            self._variables = [item for item in self._variables if item.name != variable.name] + [variable]
+        return variable
 
     def _record_at(self, replace_step: bool) -> None:
         row = self._selected_row()
@@ -207,7 +220,7 @@ class ReviewDialog(QDialog):
 
     def _verify(self) -> None:
         if self.destructive.isChecked() and not self._environment.allow_destructive:
-            QMessageBox.warning(
+            messages.warn(
                 self,
                 self.windowTitle(),
                 self.tr(
@@ -256,6 +269,6 @@ class ReviewDialog(QDialog):
 
     def _save(self) -> None:
         if not self.name.text().strip():
-            QMessageBox.warning(self, self.windowTitle(), self.tr("A test needs a name."))
+            messages.warn(self, self.windowTitle(), self.tr("A test needs a name."))
             return
         self.accept()

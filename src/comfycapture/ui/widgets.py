@@ -61,7 +61,7 @@ class IconButton(QPushButton):
 
     def _icon_color(self) -> str:
         variant = self.property("variant")
-        if variant == "primary":
+        if variant in ("primary", "destructive"):
             return active_tokens().accent_text
         if variant == "danger":
             return active_tokens().danger
