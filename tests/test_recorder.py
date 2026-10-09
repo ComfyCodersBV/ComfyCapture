@@ -170,3 +170,24 @@ def test_session_replays_saved_steps_before_recording(site_url: str, tmp_path) -
     ]
     assert messages[-1]["type"] == "done"
     assert [step["id"] for step in messages[-1]["steps"]] == ["s1", "s2"]
+
+
+def test_a_typed_password_reaches_the_app_but_not_the_step(browser, site_url: str) -> None:
+    context = browser.new_context()
+    typed: list[tuple[str, str]] = []
+    recorder = Recorder(
+        context, site_url, ATTRIBUTES, on_secret=lambda step_id, value: typed.append((step_id, value))
+    )
+    recorder.install()
+    page = context.new_page()
+    recorder.recording = True
+
+    page.goto(f"{site_url}/form.html")
+    page.get_by_label("Password").fill("hunter2")
+    wait_for_steps(page, recorder, 2)
+    steps = recorder.steps
+    context.close()
+
+    password = steps[-1]
+    assert password.value == "{{secret:password}}"
+    assert typed[-1] == (password.id, "hunter2")

@@ -44,7 +44,7 @@ class ReviewDialog(QDialog):
         parent: QWidget | None = None,
         tags: list[str] | None = None,
         variables: list[Variable] | None = None,
-        create_secret: Callable[[QWidget, str], Variable | None] | None = None,
+        create_secret: Callable[[QWidget, str, str], Variable | None] | None = None,
     ) -> None:
         super().__init__(parent)
         self._variables = variables or []
@@ -201,10 +201,10 @@ class ReviewDialog(QDialog):
             self._steps[row] = dialog.result_step()
             self._refresh(row)
 
-    def _new_secret(self, parent: QWidget, name: str) -> Variable | None:
+    def _new_secret(self, parent: QWidget, name: str, value: str = "") -> Variable | None:
         if self._create_secret is None:
             return None
-        variable = self._create_secret(parent, name)
+        variable = self._create_secret(parent, name, value)
         if variable is not None:
             self._variables = [item for item in self._variables if item.name != variable.name] + [variable]
         return variable
@@ -224,7 +224,9 @@ class ReviewDialog(QDialog):
             viewer=not self._test.device.fullscreen,
             selector_kinds=self._project.selector_kinds,
         )
-        recording = RecordingDialog(payload.to_dict(), self)
+        recording = RecordingDialog(
+            payload.to_dict(), self, self._new_secret if self._create_secret else None
+        )
         if recording.exec() != QDialog.DialogCode.Accepted:
             return
         recorded = list(recording.steps[keep:])

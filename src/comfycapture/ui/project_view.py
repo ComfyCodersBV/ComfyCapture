@@ -498,7 +498,7 @@ class ProjectView(QStackedWidget):
         self._record(stored.test, environment, self._payload(self._project, environment, stored.test))
 
     def _record(self, test: Test, environment: Environment, payload: SessionPayload) -> None:
-        recording = RecordingDialog(payload.to_dict(), self)
+        recording = RecordingDialog(payload.to_dict(), self, self._create_secret)
         if recording.exec() != QDialog.DialogCode.Accepted:
             return
         device = test.device
@@ -532,10 +532,10 @@ class ProjectView(QStackedWidget):
         self._tests.save(self._project.id, review.result_test())
         self._load_tests()
 
-    def _create_secret(self, parent: QWidget, name: str) -> Variable | None:
+    def _create_secret(self, parent: QWidget, name: str, value: str = "") -> Variable | None:
         if self._project is None:
             return None
-        return create_variable(parent, self._connection, self._project, secret=True, name=name)
+        return create_variable(parent, self._connection, self._project, secret=True, name=name, value=value)
 
     def _delete_test(self) -> None:
         stored = self._selected_test()

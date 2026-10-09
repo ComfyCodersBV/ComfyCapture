@@ -33,8 +33,10 @@ class Recorder:
         viewer: bool = False,
         on_select: Callable[[Frame, dict[str, Any]], None] | None = None,
         on_cursor: Callable[[str], None] | None = None,
+        on_secret: Callable[[str, str], None] | None = None,
     ) -> None:
         self._on_select = on_select
+        self._on_secret = on_secret
         self._on_cursor = on_cursor
         self._upload_paths: list[str] | None = None
         self._context = context
@@ -88,9 +90,12 @@ class Recorder:
         if payload.get("type") == "setInputFiles" and self._upload_paths:
             payload = {**payload, "value": ",".join(self._upload_paths)}
             self._upload_paths = None
+        secret_value = payload.pop("secretValue", None)
         event = RecordedEvent.from_payload(payload, page_index)
         if self._builder.add(event):
             self._changed()
+        if event.sensitive and secret_value and self._on_secret is not None and self.steps:
+            self._on_secret(self.steps[-1].id, str(secret_value))
 
     def expect_upload(self, paths: list[str]) -> None:
         self._upload_paths = paths

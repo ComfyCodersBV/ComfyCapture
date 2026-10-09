@@ -354,7 +354,13 @@
         }
         const sensitive = element instanceof HTMLInputElement && element.type === 'password';
         const value = element.isContentEditable ? element.innerText : element.value;
-        emit({ type: 'fill', target: describeElement(element), value: sensitive ? '' : value, sensitive });
+        emit({
+            type: 'fill',
+            target: describeElement(element),
+            value: sensitive ? '' : value,
+            sensitive,
+            secretValue: sensitive ? value : undefined,
+        });
     };
 
     const onChange = (event) => {

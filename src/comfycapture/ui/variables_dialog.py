@@ -46,6 +46,7 @@ class VariableDialog(FormDialog):
         secret: bool = False,
         name: str = "",
         parent: QWidget | None = None,
+        value: str = "",
     ) -> None:
         super().__init__(parent)
         editing = variable is not None
@@ -60,7 +61,7 @@ class VariableDialog(FormDialog):
         )
         self.secret.setChecked(variable.is_secret if variable else secret)
         self.secret.setEnabled(not editing)
-        self.value = QLineEdit(variable.value or "" if variable and not variable.is_secret else "")
+        self.value = QLineEdit(variable.value or "" if variable and not variable.is_secret else value)
         self.secret.toggled.connect(self._toggle_echo)
         self._toggle_echo(self.secret.isChecked())
         self._keep_secret = editing and variable is not None and variable.is_secret
@@ -112,9 +113,14 @@ def store_variable(
 
 
 def create_variable(
-    parent: QWidget, connection: sqlite3.Connection, project: Project, secret: bool, name: str = ""
+    parent: QWidget,
+    connection: sqlite3.Connection,
+    project: Project,
+    secret: bool,
+    name: str = "",
+    value: str = "",
 ) -> Variable | None:
-    dialog = VariableDialog(secret=secret, name=name, parent=parent)
+    dialog = VariableDialog(secret=secret, name=name, parent=parent, value=value)
     if dialog.exec() != QDialog.DialogCode.Accepted:
         return None
     variable = dialog.result_variable()

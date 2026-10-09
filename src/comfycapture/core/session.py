@@ -184,6 +184,9 @@ def record(
             on_change=lambda steps: emit(
                 {"type": "steps", "steps": [ir.step_to_dict(step) for step in steps]}
             ),
+            on_secret=lambda step_id, value: emit(
+                {"type": "secret_typed", "step_id": step_id, "value": value}
+            ),
         )
         interactions = Interactions(recorder, emit, replies, stop)
         recorder.install()
