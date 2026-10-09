@@ -4,8 +4,8 @@ import sqlite3
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtCore import QCoreApplication, Qt, Signal
-from PySide6.QtGui import QCursor
+from PySide6.QtCore import QCoreApplication, QEvent, QObject, Qt, Signal
+from PySide6.QtGui import QCursor, QMouseEvent
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -174,6 +174,7 @@ class ProjectView(QStackedWidget):
         self.test_table.setMinimumHeight(200)
         self.test_table.doubleClicked.connect(self._review_test)
         self.test_table.cellClicked.connect(self._open_ticket)
+        self.test_table.viewport().installEventFilter(self)
         review = IconButton(self.tr("Review"), "edit", "ghost", self._review_test)
         continue_recording = IconButton(
             self.tr("Continue recording"), "continue", "ghost", self._continue_recording
@@ -292,6 +293,19 @@ class ProjectView(QStackedWidget):
             else self.tr("No tests yet. Record one with the button above.")
         )
         self.test_empty.setVisible(not stored)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if watched is self.test_table.viewport() and isinstance(event, QMouseEvent):
+            self._update_ticket_cursor(event)
+        return super().eventFilter(watched, event)
+
+    def _update_ticket_cursor(self, event: QMouseEvent) -> None:
+        item = self.test_table.itemAt(event.position().toPoint())
+        linked = item is not None and item.column() == TAGS_COLUMN and bool(item.data(TICKET_LINKS_ROLE))
+        if linked:
+            self.test_table.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
+            return
+        self.test_table.viewport().unsetCursor()
 
     def _open_ticket(self, row: int, column: int) -> None:
         if column != TAGS_COLUMN:
