@@ -14,7 +14,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
-from comfycapture.core import db, ir
+from comfycapture.core import db, fake, ir
 from comfycapture.core.models import (
     OPTIONAL_SELECTOR_KINDS,
     Environment,
@@ -254,6 +254,8 @@ def complete(
         variable.name: variable for variable in db.VariableRepository(connection).for_project(project.id)
     }
     for reference in sorted(references):
+        if fake.is_reference(reference):
+            continue
         if reference.startswith(SECRET_PREFIX):
             name = reference[len(SECRET_PREFIX) :]
             if not secret_available(slug, name):

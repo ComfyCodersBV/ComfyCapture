@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -29,6 +30,7 @@ from comfycapture.ui.widgets import (
     attach_tag_completer,
     enable_with_selection,
     field_label,
+    hint,
     muted,
 )
 
@@ -48,6 +50,7 @@ class ReviewDialog(QDialog):
         self._variables = variables or []
         self._create_secret = create_secret
         self.setWindowTitle(self.tr("Review test"))
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.resize(1080, 720)
         self._test = test
         self._project = project
@@ -82,6 +85,18 @@ class ReviewDialog(QDialog):
         form.addWidget(field_label(self.tr("Description"), False), 2, 0, 1, 2)
         form.addWidget(self.description, 3, 0, 1, 2)
         form.addWidget(self.destructive, 4, 0, 1, 2)
+        form.addWidget(
+            hint(
+                self.tr(
+                    "Runs only on environments that allow destructive tests (by default only staging); "
+                    "elsewhere the run refuses it."
+                )
+            ),
+            5,
+            0,
+            1,
+            2,
+        )
 
         self.table = steps_table(self)
         self.status = QLabel()

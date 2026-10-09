@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from comfycapture.core import selectors
+from comfycapture.core import fake, selectors
 from comfycapture.core.models import Action, Device, EnvironmentConfig, Step, Target
 
 if TYPE_CHECKING:
@@ -46,14 +46,25 @@ class VariableResolver:
         self,
         variables: Mapping[str, str] | None = None,
         secrets: Callable[[str], str | None] | None = None,
+        locale: str | None = None,
     ) -> None:
         self._variables = dict(variables or {})
         self._secrets = secrets
+        self._locale = locale
+        self._fakes = fake.FakeValues(locale)
+
+    def fresh(self, locale: str | None = None) -> VariableResolver:
+        return VariableResolver(self._variables, self._secrets, locale or self._locale)
 
     def resolve(self, text: str) -> str:
         return PLACEHOLDER.sub(lambda match: self._lookup(match.group(1)), text)
 
     def _lookup(self, name: str) -> str:
+        if fake.is_reference(name):
+            try:
+                return self._fakes.value(name)
+            except fake.UnknownFakeKindError as error:
+                raise MissingVariableError(str(error)) from error
         if name.startswith(SECRET_PREFIX):
             secret_name = name[len(SECRET_PREFIX) :]
             value = self._secrets(secret_name) if self._secrets else None

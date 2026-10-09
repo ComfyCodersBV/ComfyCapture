@@ -157,7 +157,7 @@ def record(
     from playwright.sync_api import sync_playwright
 
     secrets = SecretStore(payload.project_slug)
-    resolver = runner.VariableResolver(payload.variables, secrets.get)
+    resolver = runner.VariableResolver(payload.variables, secrets.get, payload.environment.locale)
 
     commands = commands if commands is not None else queue.Queue()
     fullscreen = payload.device.fullscreen and not payload.device.is_mobile

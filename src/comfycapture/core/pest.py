@@ -1,8 +1,8 @@
 """IR to Pest browser tests (pestphp/pest-plugin-browser 5.x).
 
 One-way. Targets use the step's primary selector, written as a Playwright selector the plugin passes
-through (`[attr="value"]`, `internal:label=...`, `internal:role=...`). Placeholders become `env()` calls.
-Steps the plugin cannot express (unknown steps, double clicks) make the export fail rather than be
+through (`[attr="value"]`, `internal:label=...`, `internal:role=...`). Placeholders become `env()` calls;
+fake values become one `fake()` call per test, kept in a variable. Steps the plugin cannot express (unknown steps, double clicks) make the export fail rather than be
 dropped silently.
 """
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import re
 
-from comfycapture.core import selectors
+from comfycapture.core import fake, selectors
 from comfycapture.core.models import Action, Device, Selector, SelectorKind, Step, Test
 from comfycapture.core.secrets import environment_key
 
@@ -64,13 +64,42 @@ def environment_name(reference: str) -> str:
     return re.sub(r"[^A-Za-z0-9]", "_", reference).upper()
 
 
+def fake_variable(reference: str) -> str:
+    words = re.findall(r"[A-Za-z0-9]+", reference[len(fake.PREFIX) :])
+    return "$fake" + "".join(word[:1].upper() + word[1:] for word in words)
+
+
+def placeholder_expression(reference: str) -> str:
+    if fake.is_reference(reference):
+        return fake_variable(reference)
+    return f"env({php_string(environment_name(reference))})"
+
+
+def fake_declarations(test: Test) -> list[str]:
+    references: list[str] = []
+    for step in test.steps:
+        for text in (step.url or "", step.value or ""):
+            for match in PLACEHOLDER.finditer(text):
+                name = match.group(1)
+                if fake.is_reference(name) and name not in references:
+                    references.append(name)
+    declarations = []
+    for reference in references:
+        try:
+            kind = fake.kind_of(reference)
+        except fake.UnknownFakeKindError as error:
+            raise PestExportError(f"{test.name}: {error}") from error
+        declarations.append(f"{fake_variable(reference)} = fake()->{kind.php};")
+    return declarations
+
+
 def value_expression(text: str) -> str:
     parts: list[str] = []
     position = 0
     for match in PLACEHOLDER.finditer(text):
         if match.start() > position:
             parts.append(php_string(text[position : match.start()]))
-        parts.append(f"env({php_string(environment_name(match.group(1)))})")
+        parts.append(placeholder_expression(match.group(1)))
         position = match.end()
     if position < len(text) or not parts:
         parts.append(php_string(text[position:]))
@@ -144,7 +173,9 @@ def render(test: Test) -> str:
             blocks.append(current)
         current.extend(action_call(step))
 
-    body: list[str] = []
+    body: list[str] = ["    " + declaration for declaration in fake_declarations(test)]
+    if body:
+        body.append("")
     for block in blocks:
         body.append("    " + block[0])
         calls = block[1:]
