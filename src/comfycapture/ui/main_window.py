@@ -219,4 +219,5 @@ class MainWindow(QMainWindow):
         return "\n".join(lines)
 
     def _open_settings(self) -> None:
-        SettingsDialog(self).exec()
+        if SettingsDialog(self).exec() == QDialog.DialogCode.Accepted:
+            self.project_view.set_project(self.project_view.project)

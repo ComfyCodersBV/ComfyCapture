@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 from comfycapture.core import ir
 from comfycapture.core.models import Environment, Project, Step, Test, Variable
 from comfycapture.core.session import SessionPayload
-from comfycapture.ui import messages
+from comfycapture.ui import messages, tickets
 from comfycapture.ui.core_process import CoreProcess
 from comfycapture.ui.dialogs import split_list
 from comfycapture.ui.recording_view import RecordingDialog, fill_steps_table, steps_table
@@ -82,9 +82,15 @@ class ReviewDialog(QDialog):
         form.addWidget(field_label(self.tr("Tags"), False), 0, 1)
         form.addWidget(self.name, 1, 0)
         form.addWidget(self.tags, 1, 1)
-        form.addWidget(field_label(self.tr("Description"), False), 2, 0, 1, 2)
-        form.addWidget(self.description, 3, 0, 1, 2)
-        form.addWidget(self.destructive, 4, 0, 1, 2)
+        self.ticket_links = QLabel()
+        self.ticket_links.setOpenExternalLinks(True)
+        self.ticket_links.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        self.tags.textChanged.connect(self._update_ticket_links)
+        self._update_ticket_links()
+        form.addWidget(self.ticket_links, 2, 1)
+        form.addWidget(field_label(self.tr("Description"), False), 3, 0, 1, 2)
+        form.addWidget(self.description, 4, 0, 1, 2)
+        form.addWidget(self.destructive, 5, 0, 1, 2)
         form.addWidget(
             hint(
                 self.tr(
@@ -92,7 +98,7 @@ class ReviewDialog(QDialog):
                     "elsewhere the run refuses it."
                 )
             ),
-            5,
+            6,
             0,
             1,
             2,
@@ -146,6 +152,11 @@ class ReviewDialog(QDialog):
         layout.addWidget(steps_card, 1)
         layout.addLayout(buttons)
         self._refresh()
+
+    def _update_ticket_links(self) -> None:
+        html = tickets.links_html(ir.normalize_tags(split_list(self.tags.text())))
+        self.ticket_links.setText(html)
+        self.ticket_links.setVisible(bool(html))
 
     def result_test(self) -> Test:
         return replace(

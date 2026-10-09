@@ -5,6 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, Qt, Signal
+from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QLineEdit,
+    QMenu,
     QScrollArea,
     QStackedWidget,
     QTableWidget,
@@ -23,7 +25,7 @@ from PySide6.QtWidgets import (
 from comfycapture.core import db, exchange, ir, pest
 from comfycapture.core.models import Environment, Project, StoredTest, Test, Variable
 from comfycapture.core.session import SessionPayload
-from comfycapture.ui import formatting, messages
+from comfycapture.ui import formatting, messages, tickets
 from comfycapture.ui.dialogs import EnvironmentDialog, RecordSetupDialog, split_list
 from comfycapture.ui.icons import icon
 from comfycapture.ui.recording_view import RecordingDialog
@@ -41,6 +43,9 @@ from comfycapture.ui.widgets import (
     fit_rows,
     muted,
 )
+
+TAGS_COLUMN = 3
+TICKET_LINKS_ROLE = Qt.ItemDataRole.UserRole + 1
 
 
 def set_row(widget: QTableWidget, row: int, key: int, cells: tuple[str, ...]) -> None:
@@ -168,6 +173,7 @@ class ProjectView(QStackedWidget):
         )
         self.test_table.setMinimumHeight(200)
         self.test_table.doubleClicked.connect(self._review_test)
+        self.test_table.cellClicked.connect(self._open_ticket)
         review = IconButton(self.tr("Review"), "edit", "ghost", self._review_test)
         continue_recording = IconButton(
             self.tr("Continue recording"), "continue", "ghost", self._continue_recording
@@ -201,6 +207,10 @@ class ProjectView(QStackedWidget):
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         scroll.setWidget(content)
         return scroll
+
+    @property
+    def project(self) -> Project | None:
+        return self._project
 
     def set_project(self, project: Project | None) -> None:
         self._project = project
@@ -268,6 +278,12 @@ class ProjectView(QStackedWidget):
             )
             if run is not None:
                 self.test_table.item(row, 1).setToolTip(run.message or run.started_at)
+            links = tickets.ticket_links(test.tags)
+            self.test_table.item(row, TAGS_COLUMN).setData(TICKET_LINKS_ROLE, links)
+            if links:
+                self.test_table.item(row, TAGS_COLUMN).setToolTip(
+                    self.tr("Click to open {tickets}").format(tickets=", ".join(links))
+                )
         self.test_table.resizeColumnsToContents()
         filtering = bool(self.tag_filter.text().strip())
         self.test_empty.setText(
@@ -276,6 +292,20 @@ class ProjectView(QStackedWidget):
             else self.tr("No tests yet. Record one with the button above.")
         )
         self.test_empty.setVisible(not stored)
+
+    def _open_ticket(self, row: int, column: int) -> None:
+        if column != TAGS_COLUMN:
+            return
+        links = self.test_table.item(row, column).data(TICKET_LINKS_ROLE) or {}
+        if len(links) == 1:
+            tickets.open_ticket(next(iter(links.values())))
+            return
+        if not links:
+            return
+        menu = QMenu(self)
+        for tag, url in links.items():
+            menu.addAction(tag, lambda url=url: tickets.open_ticket(url))
+        menu.exec(QCursor.pos())
 
     def _open_variables(self) -> None:
         if self._project is not None:
