@@ -102,3 +102,18 @@ unless the user picks one in Settings. English source strings, Dutch translation
 - Consent cookies are set per environment before every test.
 - Traces and a full-page screenshot (password fields masked) are kept for a final failure only, under
   `<user data dir>/artifacts/<project>/`. Artifacts older than 14 days are pruned after every run.
+
+## D9 — Updates through GitHub releases
+
+The GitLab instance is private, so the app looks for updates on a public GitHub mirror. A CI job copies the
+release archives from the GitLab package registry to a GitHub release of the same tag; the app compares
+that tag with its own version and installs the archive for its OS after checking the `.sha256`. See
+`packaging/RELEASING.md`.
+
+## D10 — Fake values
+
+`{{fake:email}}` (and `name`, `phone`, `postcode`, … see `core/fake.py`) draws a value with Faker in the
+environment's locale (default `nl_NL`). The same reference keeps its value within one run, so a test can
+register with an address and then log in with it; `{{fake:email:2}}` draws a second one. Every attempt of
+a run draws new values. The Pest export declares each reference once as `$fakeEmail = fake()->safeEmail();`.
+

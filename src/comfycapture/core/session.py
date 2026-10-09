@@ -157,7 +157,7 @@ def record(
     from playwright.sync_api import sync_playwright
 
     secrets = SecretStore(payload.project_slug)
-    resolver = runner.VariableResolver(payload.variables, secrets.get)
+    resolver = runner.VariableResolver(payload.variables, secrets.get, payload.environment.locale)
 
     commands = commands if commands is not None else queue.Queue()
     fullscreen = payload.device.fullscreen and not payload.device.is_mobile
@@ -183,6 +183,9 @@ def record(
             on_cursor=lambda cursor: emit({"type": "cursor", "cursor": cursor}),
             on_change=lambda steps: emit(
                 {"type": "steps", "steps": [ir.step_to_dict(step) for step in steps]}
+            ),
+            on_secret=lambda step_id, value: emit(
+                {"type": "secret_typed", "step_id": step_id, "value": value}
             ),
         )
         interactions = Interactions(recorder, emit, replies, stop)

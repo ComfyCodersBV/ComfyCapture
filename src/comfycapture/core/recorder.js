@@ -296,6 +296,7 @@
         if (mode === 'hover') {
             emit({ type: 'hover', target });
         }
+        flash(ADDED[mode]);
         setMode('record');
     };
 
@@ -354,7 +355,13 @@
         }
         const sensitive = element instanceof HTMLInputElement && element.type === 'password';
         const value = element.isContentEditable ? element.innerText : element.value;
-        emit({ type: 'fill', target: describeElement(element), value: sensitive ? '' : value, sensitive });
+        emit({
+            type: 'fill',
+            target: describeElement(element),
+            value: sensitive ? '' : value,
+            sensitive,
+            secretValue: sensitive ? value : undefined,
+        });
     };
 
     const onChange = (event) => {
@@ -436,14 +443,32 @@
         assertChecked: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/>',
         hover: '<path d="m4 4 7 17 2.5-7.5L21 11Z"/>',
     };
-    const BUTTONS = [
+    const ACTION_BUTTONS = [
         ['record', 'Record', 'Record clicks and typing'],
-        ['assertVisible', 'Visible', 'Assert that an element is visible'],
-        ['assertText', 'Text', 'Assert the text of an element'],
-        ['assertValue', 'Value', 'Assert the value of a field'],
-        ['assertChecked', 'Checked', 'Assert that a checkbox is checked'],
         ['hover', 'Hover', 'Record hovering over an element'],
     ];
+    const CHECK_BUTTONS = [
+        ['assertVisible', 'Is visible', 'Check that an element is visible'],
+        ['assertText', 'Has text', 'Check the text of an element'],
+        ['assertValue', 'Has value', 'Check the value of a field'],
+        ['assertChecked', 'Is checked', 'Check that a checkbox is checked'],
+    ];
+    const PICK_HINTS = {
+        assertVisible: 'Click the element that must be visible',
+        assertText: 'Click the element whose text must match',
+        assertValue: 'Click the field whose value must match',
+        assertChecked: 'Click the checkbox or radio to check',
+        hover: 'Click the element to hover over',
+    };
+    const ADDED = {
+        assertVisible: 'Check added: is visible',
+        assertText: 'Check added: has text',
+        assertValue: 'Check added: has value',
+        assertChecked: 'Check added: is checked',
+        hover: 'Hover added',
+    };
+    const buttonHtml = ([name, label, title]) =>
+        `<button data-mode="${name}" title="${title}">${iconSvg(name)}<span class="label">${label}</span></button>`;
     const iconSvg = (name) => `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
 
@@ -456,7 +481,24 @@
         for (const button of toolbarRoot.querySelectorAll('button[data-mode]')) {
             button.classList.toggle('active', button.dataset.mode === mode);
         }
-        toolbarRoot.querySelector('.bar').classList.toggle('picking', PICK_MODES.includes(mode));
+        const picking = PICK_MODES.includes(mode);
+        toolbarRoot.querySelector('.bar').classList.toggle('picking', picking);
+        if (picking) {
+            toolbarRoot.querySelector('.hint').textContent = `${PICK_HINTS[mode]} · Esc cancels`;
+        }
+    };
+
+    let flashTimer = null;
+
+    const flash = (text) => {
+        if (!toolbarRoot) {
+            return;
+        }
+        const message = toolbarRoot.querySelector('.flash');
+        message.textContent = `✓ ${text}`;
+        toolbarRoot.querySelector('.bar').classList.add('flashing');
+        clearTimeout(flashTimer);
+        flashTimer = setTimeout(() => toolbarRoot.querySelector('.bar').classList.remove('flashing'), 1800);
     };
 
     const makeDraggable = (bar, grip) => {
@@ -490,23 +532,33 @@
         toolbarRoot.innerHTML = `
             <style>
                 :host { all: initial; }
-                .bar { position: fixed; z-index: 2147483647; bottom: 10px; left: 50%; transform: translateX(-50%);
-                    display: flex; align-items: center; gap: 2px; flex-wrap: nowrap; white-space: nowrap;
-                    padding: 4px; border-radius: 10px; background: #1d1d26; border: 1px solid #2e2e3b;
-                    box-shadow: 0 6px 20px rgba(0,0,0,.35); font: 12px/1 system-ui, sans-serif; }
-                .grip { cursor: move; padding: 6px 4px; color: #6b6b7b; user-select: none; }
-                button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
-                    padding: 6px 8px; border-radius: 7px; color: #d7dae0; }
+                .bar { position: fixed; z-index: 2147483647; bottom: 12px; left: 50%; transform: translateX(-50%);
+                    display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; white-space: nowrap;
+                    padding: 6px; border-radius: 12px; background: #1d1d26; border: 1px solid #2e2e3b;
+                    box-shadow: 0 8px 24px rgba(0,0,0,.4); font: 13px/1 system-ui, sans-serif; }
+                .grip { cursor: move; padding: 8px 4px; color: #6b6b7b; user-select: none; }
+                .group { display: inline-flex; align-items: center; gap: 4px; }
+                .checks { margin-left: 4px; padding-left: 8px; border-left: 1px solid #3a3a4a; }
+                .caption { color: #8b8b9b; font-size: 11px; font-weight: 600; letter-spacing: .06em;
+                    text-transform: uppercase; padding: 0 4px; }
+                button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+                    padding: 8px 10px; border-radius: 8px; color: #e4e6eb; }
                 button:hover { background: #2e2e3b; }
-                button.active { background: #7c3aed; color: #fff; }
+                .checks button { border: 1px solid #3f3f52; background: #23232e; }
+                .checks button svg { color: #4ade80; }
+                .checks button:hover { border-color: #4ade80; }
+                button.active, .checks button.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+                button.active svg, .checks button.active svg { color: #fff; }
                 button[data-mode=record] svg { color: #f87171; }
-                button[data-mode=record].active svg { color: #fff; }
-                .hint { display: none; color: #c4b5fd; padding: 6px 6px 6px 4px; }
+                .hint, .flash { display: none; padding: 8px 8px 8px 6px; font-weight: 600; }
+                .hint { color: #c4b5fd; }
+                .flash { color: #4ade80; }
                 .bar.picking .hint { display: inline; }
-                @media (max-width: 640px) {
-                    .label { display: none; }
-                    button { padding: 7px; }
-                    .bar.picking .hint { display: none; }
+                .bar.flashing:not(.picking) .flash { display: inline; }
+                @media (max-width: 720px) {
+                    .label, .caption { display: none; }
+                    button { padding: 8px; }
+                    .bar.picking .hint, .bar.flashing .flash { display: none; }
                 }
                 .highlight { position: fixed; z-index: 2147483646; pointer-events: none; display: none;
                     border: 2px solid #8b5cf6; background: rgba(139,92,246,.15); border-radius: 3px; }
@@ -514,8 +566,10 @@
             <div class="highlight"></div>
             <div class="bar">
                 <span class="grip">⠿</span>
-                ${BUTTONS.map(([name, label, title]) => `<button data-mode="${name}" title="${title}">${iconSvg(name)}<span class="label">${label}</span></button>`).join('')}
-                <span class="hint">Click an element · Esc cancels</span>
+                <span class="group">${ACTION_BUTTONS.map(buttonHtml).join('')}</span>
+                <span class="group checks"><span class="caption">Check</span>${CHECK_BUTTONS.map(buttonHtml).join('')}</span>
+                <span class="hint"></span>
+                <span class="flash"></span>
             </div>`;
         highlight = toolbarRoot.querySelector('.highlight');
         toolbarRoot.addEventListener('click', (event) => {

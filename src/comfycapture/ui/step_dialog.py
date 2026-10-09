@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from comfycapture.core import ir, selectors
+from comfycapture.core import fake, ir, selectors
 from comfycapture.core.models import (
     TARGETED_ACTIONS,
     VALUE_ACTIONS,
@@ -211,8 +211,19 @@ class StepDialog(FormDialog):
             menu.addAction(
                 icon("shield", active_tokens().text_secondary, 16), self.tr("New secret…"), self._new_secret
             )
+        if not menu.isEmpty():
+            menu.addSeparator()
+        fakes = menu.addMenu(self.tr("Random value"))
+        fakes.setToolTipsVisible(True)
+        for kind_name in fake.KINDS:
+            reference = fake.reference(kind_name)
+            action = fakes.addAction(reference, lambda reference=reference: self.value.insert(reference))
+            action.setToolTip(
+                self.tr(
+                    "New value on every run, the same within one run. {example} gives a second value."
+                ).format(example=fake.reference(kind_name + ":2"))
+            )
         self.insert.setMenu(menu)
-        self.insert.setEnabled(bool(self._variables) or self._create_secret is not None)
 
     def _missing_secret(self) -> str:
         known = {variable.name for variable in self._variables if variable.is_secret}

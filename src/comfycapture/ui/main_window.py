@@ -29,9 +29,11 @@ from comfycapture.ui.icons import icon, mark_pixmap
 from comfycapture.ui.project_view import ProjectView
 from comfycapture.ui.settings_dialog import SettingsDialog
 from comfycapture.ui.theme import active_tokens, heading_font
+from comfycapture.ui.updates import UpdateBar
 from comfycapture.ui.widgets import IconButton
 
 WINDOW_TITLE = "ComfyCapture {version}"
+UPDATE_CHECK_DELAY_MS = 2000
 
 
 class MainWindow(QMainWindow):
@@ -58,9 +60,16 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self._sidebar())
-        layout.addWidget(self.project_view, 1)
+        self.update_bar = UpdateBar(self)
+        content = QVBoxLayout()
+        content.setContentsMargins(0, 0, 0, 0)
+        content.setSpacing(0)
+        content.addWidget(self.update_bar)
+        content.addWidget(self.project_view, 1)
+        layout.addLayout(content, 1)
         self.setCentralWidget(root)
         self._load_projects()
+        QTimer.singleShot(UPDATE_CHECK_DELAY_MS, self.update_bar.check)
 
     def show_maximised(self) -> None:
         screen = self.screen()
@@ -219,4 +228,5 @@ class MainWindow(QMainWindow):
         return "\n".join(lines)
 
     def _open_settings(self) -> None:
-        SettingsDialog(self).exec()
+        if SettingsDialog(self).exec() == QDialog.DialogCode.Accepted:
+            self.project_view.set_project(self.project_view.project)

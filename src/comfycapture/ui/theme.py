@@ -239,6 +239,8 @@ def stylesheet(tokens: Tokens) -> str:
     #Optional {{ color: {tokens.text_subtle}; font-size: 12px; }}
     #FieldHint {{ color: {tokens.text_subtle}; font-size: 12px; }}
     #MessageText {{ color: {tokens.text_secondary}; font-size: 14px; }}
+    #UpdateBar {{ background: {tokens.accent_soft}; border-bottom: 1px solid {tokens.border}; }}
+    #UpdateText {{ color: {tokens.text}; font-size: 14px; font-weight: 600; }}
     #Badge {{ background: {tokens.accent_soft}; color: {tokens.text}; border-radius: 11px; padding: 3px 10px;
         font-size: 12px; font-weight: 500; }}
 

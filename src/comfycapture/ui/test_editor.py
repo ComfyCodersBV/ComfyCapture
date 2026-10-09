@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -18,7 +19,7 @@ from PySide6.QtWidgets import (
 from comfycapture.core import ir
 from comfycapture.core.models import Environment, Project, Step, Test, Variable
 from comfycapture.core.session import SessionPayload
-from comfycapture.ui import messages
+from comfycapture.ui import messages, tickets
 from comfycapture.ui.core_process import CoreProcess
 from comfycapture.ui.dialogs import split_list
 from comfycapture.ui.recording_view import RecordingDialog, fill_steps_table, steps_table
@@ -29,6 +30,7 @@ from comfycapture.ui.widgets import (
     attach_tag_completer,
     enable_with_selection,
     field_label,
+    hint,
     muted,
 )
 
@@ -42,12 +44,13 @@ class ReviewDialog(QDialog):
         parent: QWidget | None = None,
         tags: list[str] | None = None,
         variables: list[Variable] | None = None,
-        create_secret: Callable[[QWidget, str], Variable | None] | None = None,
+        create_secret: Callable[[QWidget, str, str], Variable | None] | None = None,
     ) -> None:
         super().__init__(parent)
         self._variables = variables or []
         self._create_secret = create_secret
         self.setWindowTitle(self.tr("Review test"))
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.resize(1080, 720)
         self._test = test
         self._project = project
@@ -79,9 +82,27 @@ class ReviewDialog(QDialog):
         form.addWidget(field_label(self.tr("Tags"), False), 0, 1)
         form.addWidget(self.name, 1, 0)
         form.addWidget(self.tags, 1, 1)
-        form.addWidget(field_label(self.tr("Description"), False), 2, 0, 1, 2)
-        form.addWidget(self.description, 3, 0, 1, 2)
-        form.addWidget(self.destructive, 4, 0, 1, 2)
+        self.ticket_links = QLabel()
+        self.ticket_links.setOpenExternalLinks(True)
+        self.ticket_links.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        self.tags.textChanged.connect(self._update_ticket_links)
+        self._update_ticket_links()
+        form.addWidget(self.ticket_links, 2, 1)
+        form.addWidget(field_label(self.tr("Description"), False), 3, 0, 1, 2)
+        form.addWidget(self.description, 4, 0, 1, 2)
+        form.addWidget(self.destructive, 5, 0, 1, 2)
+        form.addWidget(
+            hint(
+                self.tr(
+                    "Runs only on environments that allow destructive tests (by default only staging); "
+                    "elsewhere the run refuses it."
+                )
+            ),
+            6,
+            0,
+            1,
+            2,
+        )
 
         self.table = steps_table(self)
         self.status = QLabel()
@@ -132,6 +153,11 @@ class ReviewDialog(QDialog):
         layout.addLayout(buttons)
         self._refresh()
 
+    def _update_ticket_links(self) -> None:
+        html = tickets.links_html(ir.normalize_tags(split_list(self.tags.text())))
+        self.ticket_links.setText(html)
+        self.ticket_links.setVisible(bool(html))
+
     def result_test(self) -> Test:
         return replace(
             self._test,
@@ -175,10 +201,10 @@ class ReviewDialog(QDialog):
             self._steps[row] = dialog.result_step()
             self._refresh(row)
 
-    def _new_secret(self, parent: QWidget, name: str) -> Variable | None:
+    def _new_secret(self, parent: QWidget, name: str, value: str = "") -> Variable | None:
         if self._create_secret is None:
             return None
-        variable = self._create_secret(parent, name)
+        variable = self._create_secret(parent, name, value)
         if variable is not None:
             self._variables = [item for item in self._variables if item.name != variable.name] + [variable]
         return variable
@@ -198,7 +224,9 @@ class ReviewDialog(QDialog):
             viewer=not self._test.device.fullscreen,
             selector_kinds=self._project.selector_kinds,
         )
-        recording = RecordingDialog(payload.to_dict(), self)
+        recording = RecordingDialog(
+            payload.to_dict(), self, self._new_secret if self._create_secret else None
+        )
         if recording.exec() != QDialog.DialogCode.Accepted:
             return
         recorded = list(recording.steps[keep:])

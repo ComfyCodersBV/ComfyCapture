@@ -8,7 +8,7 @@ variables:
   UV_FROZEN: "1"
   PACKAGE_NAME: comfycapture
   APP_NAME: ComfyCapture
-  RELEASE_TARGETS: "linux-x86_64.tar.gz macos-arm64.zip windows-x86_64.zip"
+  RELEASE_TARGETS: "linux-x86_64.tar.gz linux-x86_64.deb macos-arm64.zip windows-x86_64.zip"
 
 .on-change:
   rules:
@@ -87,3 +87,13 @@ release:
         set -- "$@" --assets-link "{\"name\":\"$FILE.sha256\",\"url\":\"$REGISTRY/$FILE.sha256\",\"link_type\":\"other\"}"
       done
       "$@"
+
+github-release:
+  stage: release
+  image: python:3.12-alpine
+  needs:
+    - release
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/ && $GITHUB_TOKEN
+  script:
+    - python packaging/github_release.py

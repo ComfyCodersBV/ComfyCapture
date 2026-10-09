@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import replace
 from typing import Any
 
 from PySide6.QtCore import QCoreApplication, Qt, QTimer
@@ -20,8 +22,9 @@ from PySide6.QtWidgets import (
 )
 
 from comfycapture.core import ir
-from comfycapture.core.models import Step
+from comfycapture.core.models import Step, Variable
 from comfycapture.core.processes import browser_install_command
+from comfycapture.core.sanitizer import SECRET_PLACEHOLDER
 from comfycapture.ui import formatting, messages
 from comfycapture.ui.core_process import CoreProcess
 from comfycapture.ui.device_viewer import DevicePanel
@@ -78,8 +81,16 @@ def choose_many(parent: QWidget, options: list[dict[str, Any]]) -> list[str]:
 
 
 class RecordingDialog(QDialog):
-    def __init__(self, payload: dict[str, Any], parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        payload: dict[str, Any],
+        parent: QWidget | None = None,
+        create_secret: Callable[[QWidget, str, str], Variable | None] | None = None,
+    ) -> None:
         super().__init__(parent)
+        self._create_secret = create_secret
+        self._typed_secrets: dict[str, str] = {}
+        self._secret_names: dict[str, str] = {}
         self.setWindowTitle(self.tr("Recording"))
         self.resize(940, 600)
         self._payload = payload
@@ -104,6 +115,15 @@ class RecordingDialog(QDialog):
         self.notice.setObjectName("Optional")
         self.notice.setWordWrap(True)
         self.notice.hide()
+        self.secret_label = QLabel()
+        self.secret_label.setObjectName("Optional")
+        self.secret_label.setWordWrap(True)
+        self.secret_bar = QWidget()
+        secret_row = QHBoxLayout(self.secret_bar)
+        secret_row.setContentsMargins(0, 0, 0, 0)
+        secret_row.addWidget(self.secret_label, 1)
+        secret_row.addWidget(IconButton(self.tr("Save as secret"), "shield", "secondary", self._save_secret))
+        self.secret_bar.hide()
         self.table = steps_table(self)
         card = Card(self.tr("Recorded steps"))
         card.body.addWidget(self.table)
@@ -122,6 +142,7 @@ class RecordingDialog(QDialog):
         column.addLayout(heading)
         column.addWidget(self.hint)
         column.addWidget(self.notice)
+        column.addWidget(self.secret_bar)
         column.addWidget(card, 1)
         column.addLayout(buttons)
 
@@ -165,7 +186,41 @@ class RecordingDialog(QDialog):
 
     @property
     def steps(self) -> tuple[Step, ...]:
-        return self._steps
+        return tuple(self._with_secret_name(step) for step in self._steps)
+
+    def _with_secret_name(self, step: Step) -> Step:
+        name = self._secret_names.get(step.id)
+        if name is None or step.value != SECRET_PLACEHOLDER:
+            return step
+        return replace(step, value="{{secret:" + name + "}}", note=None)
+
+    def _on_secret_typed(self, step_id: str, value: str) -> None:
+        if self._create_secret is None:
+            return
+        self._secret_names.pop(step_id, None)
+        self._typed_secrets[step_id] = value
+        self._show_secret_bar()
+
+    def _show_secret_bar(self) -> None:
+        pending = [step_id for step_id in self._typed_secrets if step_id not in self._secret_names]
+        self.secret_bar.setVisible(bool(pending))
+        if pending:
+            self.secret_label.setText(
+                self.tr("You typed a password. Save it as a secret now, so the test can replay it.")
+            )
+
+    def _save_secret(self) -> None:
+        pending = [step_id for step_id in self._typed_secrets if step_id not in self._secret_names]
+        if not pending or self._create_secret is None:
+            return
+        step_id = pending[-1]
+        variable = self._create_secret(self, "password", self._typed_secrets[step_id])
+        if variable is None:
+            return
+        self._secret_names[step_id] = variable.name
+        del self._typed_secrets[step_id]
+        fill_steps_table(self.table, self.steps)
+        self._show_secret_bar()
 
     def _send(self, command: dict[str, Any]) -> None:
         self.process.send(command)
@@ -193,7 +248,7 @@ class RecordingDialog(QDialog):
             return
         if kind in ("steps", "done"):
             self._steps = tuple(ir.step_from_dict(step) for step in message.get("steps", []))
-            fill_steps_table(self.table, self._steps)
+            fill_steps_table(self.table, self.steps)
             self._finished = self._finished or kind == "done"
             return
         if kind == "frame" and self.device is not None:
@@ -219,6 +274,9 @@ class RecordingDialog(QDialog):
             return
         if kind == "cursor" and self.device is not None:
             self.device.viewer.set_page_cursor(str(message.get("cursor", "default")))
+            return
+        if kind == "secret_typed":
+            self._on_secret_typed(str(message.get("step_id", "")), str(message.get("value", "")))
             return
         if kind == "notice":
             self.notice.setText(str(message.get("message", "")))

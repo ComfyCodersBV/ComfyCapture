@@ -230,3 +230,14 @@ def test_step_dialog_creates_the_missing_secret_without_duplicating_it(applicati
     assert asked == ["password"]
     assert dialog.value.text() == "{{secret:password}}"
     assert "{{secret:password}}" in [action.text() for action in dialog.insert.menu().actions()]
+
+
+def test_ticket_urls_fill_the_placeholder_or_append_the_tag() -> None:
+    from comfycapture.ui.tickets import build_ticket_url
+
+    assert build_ticket_url("https://console.test/tickets/{ticket}/view", "CINF-19") == (
+        "https://console.test/tickets/CINF-19/view"
+    )
+    assert build_ticket_url("https://console.test/t/", "CINF-19") == "https://console.test/t/CINF-19"
+    assert build_ticket_url("https://console.test/t/", "checkout") is None
+    assert build_ticket_url("", "CINF-19") is None

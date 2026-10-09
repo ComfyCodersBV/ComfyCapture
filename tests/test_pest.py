@@ -61,3 +61,50 @@ def test_rendered_test_is_valid_php(tmp_path) -> None:
     result = subprocess.run(["php", "-l", str(path)], capture_output=True, text=True, check=False)
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_fake_values_become_one_variable_per_reference() -> None:
+    test = Test(
+        id="t",
+        name="Register",
+        steps=(
+            Step("s1", Action.NAVIGATE, url="/register"),
+            Step(
+                "s2",
+                Action.FILL,
+                target=Target(Selector(SelectorKind.LABEL, "E-mail")),
+                value="{{fake:email}}",
+            ),
+            Step(
+                "s3",
+                Action.FILL,
+                target=Target(Selector(SelectorKind.LABEL, "Other")),
+                value="{{fake:email:2}}",
+            ),
+            Step(
+                "s4",
+                Action.ASSERT_TEXT,
+                target=Target(Selector(SelectorKind.CSS, "p")),
+                value="{{fake:email}}",
+            ),
+        ),
+    )
+
+    output = pest.render(test)
+
+    assert output.count("$fakeEmail = fake()->safeEmail();") == 1
+    assert "$fakeEmail2 = fake()->safeEmail();" in output
+    assert "assertSeeIn('p', $fakeEmail)" in output
+
+
+def test_an_unknown_fake_value_fails_the_export() -> None:
+    test = Test(
+        id="t",
+        name="Broken",
+        steps=(
+            Step("s1", Action.FILL, target=Target(Selector(SelectorKind.CSS, "i")), value="{{fake:nope}}"),
+        ),
+    )
+
+    with pytest.raises(pest.PestExportError):
+        pest.render(test)

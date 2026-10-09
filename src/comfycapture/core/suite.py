@@ -292,14 +292,13 @@ class SuiteRunner:
         page = context.new_page()
         runner.accept_dialogs(page)
         base_url = self._plan.environment.base_url
+        resolver = self._resolver.fresh(self._plan.environment.config.locale)
 
         def on_step(outcome: runner.StepOutcome) -> None:
             self._emit({"type": "step", "test": stored.test.id, "outcome": outcome_to_dict(outcome)})
 
         setup_steps: tuple[Step, ...] = self._plan.setup.test.steps if self._plan.setup else ()
-        outcomes = runner.replay(
-            page, setup_steps, base_url, self._resolver, timeout_ms=self._plan.timeout_ms
-        )
+        outcomes = runner.replay(page, setup_steps, base_url, resolver, timeout_ms=self._plan.timeout_ms)
         if outcomes and not outcomes[-1].passed:
             message = f"Setup test failed at step {outcomes[-1].step_id}: {outcomes[-1].message}"
             return False, (), self._fail(context, page, stored, None, message, keep_artifacts)
@@ -308,7 +307,7 @@ class SuiteRunner:
             page,
             stored.test.steps,
             base_url,
-            self._resolver,
+            resolver,
             on_step=on_step,
             timeout_ms=self._plan.timeout_ms,
         )

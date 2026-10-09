@@ -128,7 +128,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stderr.write("usage: python -m comfycapture.core.verify <payload.json>\n")
         return 2
     payload = SessionPayload.from_dict(json.loads(Path(arguments[0]).read_text(encoding="utf-8")))
-    resolver = runner.VariableResolver(payload.variables, SecretStore(payload.project_slug).get)
+    resolver = runner.VariableResolver(
+        payload.variables, SecretStore(payload.project_slug).get, payload.environment.locale
+    )
     try:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)

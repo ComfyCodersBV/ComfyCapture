@@ -6,6 +6,7 @@ and, on a version tag, creates the GitLab release that links to the uploaded bui
 | OS      | Archive                                          |
 |---------|--------------------------------------------------|
 | Linux   | `ComfyCapture-<version>-linux-x86_64.tar.gz` |
+| Ubuntu  | `ComfyCapture-<version>-linux-x86_64.deb`    |
 | macOS   | `ComfyCapture-<version>-macos-arm64.zip`     |
 | Windows | `ComfyCapture-<version>-windows-x86_64.zip`  |
 
@@ -45,7 +46,8 @@ Delete the `bt-release` folder afterwards: its git config contains the token. An
    - Windows (PowerShell): `$env:GITLAB_TOKEN = "..."`
 
 Ubuntu additionally needs the Qt runtime libraries, which a desktop install already has:
-`sudo apt install libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3`.
+`sudo apt install libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3`. The Linux build also makes
+the `.deb`, which needs `dpkg-deb` (part of every Ubuntu install).
 
 ## Per release
 
@@ -72,14 +74,38 @@ On each OS (Linux, macOS, Windows), in the clone:
    The script refuses to upload unless the working tree is clean and HEAD carries the tag matching
    `pyproject.toml`. It builds with PyInstaller, runs a smoke test (the core subprocess must answer over
    stdout, the window must stay up for a few seconds), writes the archive plus a `.sha256` to `releases/`
-   and uploads both to the package registry of this project.
+   and uploads both to the package registry of this project. On Linux it also builds and uploads the
+   `.deb`.
 
    Without `--upload` it is a local test build; that is also the way to check a change to packaging.
 
 Once all three are uploaded:
 
 4. In GitLab, open the tag's pipeline (Build → Pipelines) and retry the `release` job. It checks that
-   every archive is in the registry and creates the release with links to them.
+   every archive is in the registry and creates the release with links to them. After it, the
+   `github-release` job copies the archives and checksums to a GitHub release of the same tag. Run it by
+   hand if it stays skipped.
+
+## Updates through GitHub
+
+Installed apps check `https://api.github.com/repos/tranquil-tools/comfy-capture/releases/latest` a few
+seconds after start. When the tag there is newer than the app, a bar offers the update. "Update now"
+downloads the archive for that OS, checks it against its `.sha256` and installs it:
+
+- **Ubuntu (.deb)**: `pkexec apt-get install`, so one password prompt, then the app restarts.
+- **Other Linux, macOS**: the app folder or `.app` is swapped for the new one (the old one is kept as
+  `*.previous` until the next start), then the app restarts. The folder must be writable for the user.
+- **Windows**: a small PowerShell script waits for the app to close, swaps the folder and starts it again.
+- **From source** (`uv run`): only a link to the release page.
+
+So a release reaches users only once it is on GitHub. Needed once:
+
+1. A push mirror from GitLab to `github.com/tranquil-tools/comfy-capture` (Settings → Repository →
+   Mirroring repositories). The repository must be public: the app checks without a token.
+2. A GitHub fine-grained token for that repository with *Contents: read and write*, stored in GitLab as
+   the CI/CD variable `GITHUB_TOKEN` (masked, protected). Protected variables only reach protected
+   tags, so protect `v*` under Settings → Repository → Protected tags. Without the variable the
+   `github-release` job does not run.
 
 A failed build on one OS can be rebuilt and re-uploaded with the same command; uploading the same file
 name again adds a newer file to the package, and downloads always serve the newest.
@@ -88,7 +114,10 @@ name again adds a newer file to the package, and downloads always serve the newe
 
 The builds are not signed yet, so each OS warns the first time.
 
-- **Linux**: `tar xzf ComfyCapture-*.tar.gz` and run `ComfyCapture/ComfyCapture`.
+- **Ubuntu**: `sudo apt install ./ComfyCapture-*.deb` (or open it in App Center). ComfyCapture then
+  shows up in the app grid. Later versions arrive through the update bar; remove with
+  `sudo apt remove comfycapture`.
+- **Other Linux**: `tar xzf ComfyCapture-*.tar.gz` and run `ComfyCapture/ComfyCapture`.
 - **macOS**: unzip, move `ComfyCapture.app` to Applications, then once:
   `xattr -dr com.apple.quarantine /Applications/ComfyCapture.app` (or right-click → Open).
 - **Windows**: unzip anywhere and run `ComfyCapture\ComfyCapture.exe`; on the SmartScreen warning
