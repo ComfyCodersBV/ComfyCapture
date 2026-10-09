@@ -7,7 +7,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-GITHUB_REPOSITORY = "tranquil-tools/comfy-capture"
+GITHUB_REPOSITORY = "ComfyCodersBV/ComfyCapture"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPOSITORY}"
 GITHUB_UPLOADS = f"https://uploads.github.com/repos/{GITHUB_REPOSITORY}"
 TIMEOUT_SECONDS = 600

@@ -19,7 +19,7 @@ from pathlib import Path
 from comfycapture import __version__
 
 APP_NAME = "ComfyCapture"
-GITHUB_REPOSITORY = "tranquil-tools/comfy-capture"
+GITHUB_REPOSITORY = "ComfyCodersBV/ComfyCapture"
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
 RELEASES_PAGE_URL = f"https://github.com/{GITHUB_REPOSITORY}/releases/latest"
 DEBIAN_INSTALL_DIR = Path("/opt/comfycapture")

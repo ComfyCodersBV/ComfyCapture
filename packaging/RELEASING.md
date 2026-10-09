@@ -88,7 +88,7 @@ Once all three are uploaded:
 
 ## Updates through GitHub
 
-Installed apps check `https://api.github.com/repos/tranquil-tools/comfy-capture/releases/latest` a few
+Installed apps check `https://api.github.com/repos/ComfyCodersBV/ComfyCapture/releases/latest` a few
 seconds after start. When the tag there is newer than the app, a bar offers the update. "Update now"
 downloads the archive for that OS, checks it against its `.sha256` and installs it:
 
@@ -100,7 +100,7 @@ downloads the archive for that OS, checks it against its `.sha256` and installs 
 
 So a release reaches users only once it is on GitHub. Needed once:
 
-1. A push mirror from GitLab to `github.com/tranquil-tools/comfy-capture` (Settings → Repository →
+1. A push mirror from GitLab to `github.com/ComfyCodersBV/ComfyCapture` (Settings → Repository →
    Mirroring repositories). The repository must be public: the app checks without a token.
 2. A GitHub fine-grained token for that repository with *Contents: read and write*, stored in GitLab as
    the CI/CD variable `GITHUB_TOKEN` (masked, protected). Protected variables only reach protected
