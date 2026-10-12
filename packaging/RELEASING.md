@@ -49,6 +49,19 @@ Ubuntu additionally needs the Qt runtime libraries, which a desktop install alre
 `sudo apt install libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3`. The Linux build also makes
 the `.deb`, which needs `dpkg-deb` (part of every Ubuntu install).
 
+The Mac that builds releases also needs a Developer ID certificate and notarization credentials:
+
+1. Xcode → Settings → Accounts → the ComfyCoders team → Manage Certificates → "+" → **Developer ID
+   Application**. `security find-identity -v -p codesigning` then lists it. Export it as `.p12` from
+   Keychain Access into Passbolt, so another Mac can take over.
+2. Create an app-specific password at account.apple.com and store it in the keychain:
+   `xcrun notarytool store-credentials comfycapture --apple-id <apple id> --team-id <team id>`.
+
+The build signs the app as soon as the certificate is in the keychain (`MACOS_SIGNING_IDENTITY` picks one
+when there are several) and notarizes it on `--upload` or `--notarize`; an upload without the certificate
+is refused. Notarizing takes a few minutes. When Apple rejects it, the script prints Apple's log; a missing
+entitlement goes into `packaging/entitlements.plist`.
+
 ## Per release
 
 On the development machine:
@@ -112,14 +125,13 @@ name again adds a newer file to the package, and downloads always serve the newe
 
 ## Installing a build
 
-The builds are not signed yet, so each OS warns the first time.
+The macOS build is signed and notarized; the Linux and Windows builds are not, so those warn the first time.
 
 - **Ubuntu**: `sudo apt install ./ComfyCapture-*.deb` (or open it in App Center). ComfyCapture then
   shows up in the app grid. Later versions arrive through the update bar; remove with
   `sudo apt remove comfycapture`.
 - **Other Linux**: `tar xzf ComfyCapture-*.tar.gz` and run `ComfyCapture/ComfyCapture`.
-- **macOS**: unzip, move `ComfyCapture.app` to Applications, then once:
-  `xattr -dr com.apple.quarantine /Applications/ComfyCapture.app` (or right-click → Open).
+- **macOS**: unzip and move `ComfyCapture.app` to Applications.
 - **Windows**: unzip anywhere and run `ComfyCapture\ComfyCapture.exe`; on the SmartScreen warning
   choose More info → Run anyway.
 

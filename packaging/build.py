@@ -3,6 +3,9 @@
     uv run --group package python packaging/build.py            # build + smoke test + archive
     uv run --group package python packaging/build.py --upload   # also upload to the package registry
 
+On macOS the app is signed when a Developer ID certificate is in the keychain, and notarized for
+--upload or --notarize.
+
 See packaging/RELEASING.md.
 """
 
@@ -13,6 +16,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -39,6 +43,12 @@ DEBIAN_INSTALL_DIR = Path("opt") / PACKAGE_NAME
 DEBIAN_ARCHITECTURES = {"x86_64": "amd64", "arm64": "arm64"}
 DEBIAN_DEPENDS = "libgl1, libegl1, libxkbcommon0, libfontconfig1, libdbus-1-3, libxcb1"
 DEBIAN_MAINTAINER = "ComfyCoders <info@comfycoders.nl>"
+ENTITLEMENTS = ROOT / "packaging" / "entitlements.plist"
+NOTARY_PROFILE = "comfycapture"
+NOTARY_TIMEOUT = "30m"
+MACH_O_MAGICS = {
+    bytes.fromhex(magic) for magic in ("feedface", "feedfacf", "cefaedfe", "cffaedfe", "cafebabe", "bebafeca")
+}
 
 
 class BuildError(Exception):
@@ -174,6 +184,103 @@ def smoke_test(target: Target) -> None:
     print(f"    desktop: still running after {SMOKE_SECONDS}s")
 
 
+def signing_identity() -> str | None:
+    configured = os.environ.get("MACOS_SIGNING_IDENTITY")
+    if configured:
+        return configured
+    result = subprocess.run(
+        ["security", "find-identity", "-v", "-p", "codesigning"], capture_output=True, text=True, check=False
+    )
+    identities = list(dict.fromkeys(re.findall(r'"(Developer ID Application: [^"]+)"', result.stdout)))
+    if len(identities) > 1:
+        raise BuildError("Several Developer ID certificates found; pick one with MACOS_SIGNING_IDENTITY.")
+    return identities[0] if identities else None
+
+
+def is_mach_o(path: Path) -> bool:
+    if path.is_symlink() or not path.is_file():
+        return False
+    with path.open("rb") as file:
+        return file.read(4) in MACH_O_MAGICS
+
+
+def codesign(path: Path, identity: str) -> None:
+    result = subprocess.run(
+        [
+            "codesign",
+            "--force",
+            "--timestamp",
+            "--options",
+            "runtime",
+            "--entitlements",
+            str(ENTITLEMENTS),
+            "--sign",
+            identity,
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise BuildError(f"Signing {path} failed: {result.stderr.strip()}")
+
+
+def deepest_first(paths: list[Path]) -> list[Path]:
+    return sorted(paths, key=lambda path: len(path.parts), reverse=True)
+
+
+def sign(target: Target, identity: str) -> None:
+    contents = target.bundle / "Contents"
+    binaries = deepest_first([path for path in contents.rglob("*") if is_mach_o(path)])
+    frameworks = deepest_first(
+        [path for path in contents.rglob("*.framework") if path.is_dir() and not path.is_symlink()]
+    )
+    for path in [*binaries, *frameworks, target.bundle]:
+        codesign(path, identity)
+    subprocess.run(["codesign", "--verify", "--deep", "--strict", str(target.bundle)], check=True)
+    print(f"    signed {len(binaries)} binaries and {len(frameworks)} frameworks as {identity}")
+
+
+def notarize(target: Target) -> None:
+    profile = os.environ.get("MACOS_NOTARY_PROFILE", NOTARY_PROFILE)
+    submission = BUILD / f"{APP_NAME}-notarization.zip"
+    submission.unlink(missing_ok=True)
+    subprocess.run(["ditto", "-c", "-k", "--keepParent", str(target.bundle), str(submission)], check=True)
+    result = subprocess.run(
+        [
+            "xcrun",
+            "notarytool",
+            "submit",
+            str(submission),
+            "--keychain-profile",
+            profile,
+            "--wait",
+            "--timeout",
+            NOTARY_TIMEOUT,
+            "--output-format",
+            "json",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        response = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        response = {}
+    status = response.get("status")
+    if status != "Accepted":
+        submission_id = response.get("id")
+        if submission_id:
+            subprocess.run(
+                ["xcrun", "notarytool", "log", submission_id, "--keychain-profile", profile], check=False
+            )
+        raise BuildError(f"Notarization failed ({status or result.stderr.strip()}); see the log above.")
+    subprocess.run(["xcrun", "stapler", "staple", str(target.bundle)], check=True)
+    subprocess.run(["spctl", "--assess", "--type", "execute", "--verbose", str(target.bundle)], check=True)
+
+
 def write_checksum(path: Path) -> Path:
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     checksum = path.with_name(path.name + ".sha256")
@@ -285,6 +392,7 @@ def main() -> int:
         "--upload", action="store_true", help="upload the archive to the GitLab package registry"
     )
     parser.add_argument("--skip-build", action="store_true", help="reuse dist/ from a previous build")
+    parser.add_argument("--notarize", action="store_true", help="notarize the macOS app without uploading")
     arguments = parser.parse_args()
 
     try:
@@ -292,11 +400,21 @@ def main() -> int:
         step(f"{APP_NAME} {version()} for {target.system}-{target.arch}")
         for problem in check_repository(require_release=arguments.upload):
             print(f"    warning: {problem} (fine for a test build, not for a release)")
+        identity = signing_identity() if target.system == "macos" else None
+        notarizing = target.system == "macos" and (arguments.upload or arguments.notarize)
+        if notarizing and identity is None:
+            raise BuildError("Cannot notarize: no Developer ID Application certificate in the keychain.")
         if not arguments.skip_build:
             step("PyInstaller")
             run_pyinstaller(target)
+        if identity is not None:
+            step("Sign")
+            sign(target, identity)
         step("Smoke test")
         smoke_test(target)
+        if notarizing:
+            step("Notarize")
+            notarize(target)
         step("Archive")
         paths = [archive(target)]
         if target.system == "linux":
